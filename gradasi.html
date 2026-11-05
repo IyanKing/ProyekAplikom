@@ -110,12 +110,6 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 <div class="bt"><button class="o" id="cp">Salin tabel (untuk Excel)</button></div>
 <textarea id="ta" hidden readonly aria-label="Tabel hasil"></textarea>
 </section>
-<section class="c" id="ex2">
-<h2>Unduh hasil</h2>
-<p class="h" style="margin-top:0">Unduh hasil perhitungan dalam satu file Excel, atau simpan grafik gradasi dan grafik Marshall yang tersedia sebagai satu gambar JPEG.</p>
-<div class="bt"><button id="dx">Unduh hasil Excel (.xlsx)</button><button class="o" id="dp">Unduh grafik (.jpg)</button></div>
-<p class="h" id="xs" role="status" aria-live="polite"></p>
-</section>
 </div>
 <section class="c" id="jm">
 <h2>Rancangan campuran (JMF)</h2>
@@ -153,6 +147,12 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 <div class="w"><table><thead><tr><th>Parameter</th><th>Syarat</th><th>Rentang KA yang memenuhi</th></tr></thead><tbody id="mzr"></tbody></table></div>
 <p class="h">Kurva: regresi polinomial (orde 2 bila 3 KA atau lebih) dari rata-rata tiap KA. KAO = titik tengah rentang KA yang memenuhi semua syarat. Garis merah putus-putus = batas spesifikasi, garis oranye putus-putus = KAO.</p>
 </div>
+</section>
+<section class="c" id="ex2">
+<h2>Unduh hasil lengkap</h2>
+<p class="h" style="margin-top:0">File Excel mencakup data gradasi, seluruh lembar JMF, data benda uji, parameter, batas spesifikasi, dan ringkasan hasil Marshall. Gambar JPEG merangkum grafik gradasi dan grafik Marshall yang sudah tersedia.</p>
+<div class="bt"><button id="dx">Unduh semua data (.xlsx)</button><button class="o" id="dp">Unduh semua grafik (.jpg)</button></div>
+<p class="h" id="xs" role="status" aria-live="polite"></p>
 </section>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -357,6 +357,7 @@ const LIMS=[["vi1","VIM min (%)"],["vi2","VIM maks (%)"],["vma","VMA min (%)"],[
 const PRM=[["gsb","BJ bulk agregat (Gsb)"],["gse","BJ efektif agregat (Gse)"],["gb","BJ aspal (Gb)"],["pg","Pengali stabilitas"]];
 const limOf=k=>Object.fromEntries(Object.entries(MP[k]).map(([a,b])=>[a,String(b)]));
 const MZ=()=>S.mz||(S.mz={sp:"AC-WC",lim:limOf("AC-WC"),g:{gsb:"",gse:"",gb:"1.03",pg:"1"},rows:[]});
+let MZResult=null;
 function pfit(xs,ys){
  const p=xs.map((x,i)=>[x,ys[i]]).filter(q=>isFinite(q[1]));
  const d=Math.min(2,p.length-1);if(d<1)return null;
@@ -384,6 +385,7 @@ function mini(t,u,xs,ys,f,lo,hi,kao){
  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik ${t} terhadap kadar aspal">${s}</svg>`;
 }
 function mzCalc(){
+ MZResult=null;
  const M=MZ(),num=v=>parseFloat(v),ln=v=>{const x=parseFloat(v);return isNaN(x)?null:x};
  const gsb=num(M.g.gsb),gse=num(M.g.gse),gb=num(M.g.gb),pg=num(M.g.pg)||1;
  const rows=M.rows.map(r=>({ka:num(r.ka),a:num(r.a),b:num(r.b),c:num(r.c),st:num(r.st),fl:num(r.fl)})).filter(r=>r.ka>=0&&r.a>0&&r.b>r.c);
@@ -406,6 +408,13 @@ function mzCalc(){
  let best=null,s0=-1;
  all.forEach((v,i)=>{if(v&&s0<0)s0=i;if((!v||i===all.length-1)&&s0>=0){const e=v?i:i-1;if(!best||e-s0>best[1]-best[0])best=[s0,e];s0=-1}});
  const kao=best?(grid[best[0]]+grid[best[1]])/2:null;
+ MZResult={
+  spec:M.sp,
+  limits:MT.map(m=>({key:m[0],name:m[1],unit:m[2],min:m[3],max:m[4]})),
+  averages:A,
+  kao,
+  range:best?[grid[best[0]],grid[best[1]]]:null,
+ };
  const f1=v=>isFinite(v)?nf(v):"–",n3=v=>isFinite(v)?v.toLocaleString("id-ID",{maximumFractionDigits:3}):"–";
  $("mzk").innerHTML=kao!=null?`<div class="k"><span>Kadar aspal optimum (KAO)</span><b>${nf(Math.round(kao*100)/100)}%</b><small>titik tengah rentang yang memenuhi semua syarat</small></div><div class="k"><span>Rentang yang memenuhi</span><b style="font-size:1.5rem">${nf(grid[best[0]])} – ${nf(grid[best[1]])}%</b></div><div class="k"><span>Perkiraan pada KAO</span><small style="color:var(--st)">${MT.map((m,i)=>fits[i]?`${m[1]} ${nf(pev(fits[i],kao))}`:"").filter(Boolean).join(" · ")}</small></div>`:`<div class="k"><span>Kadar aspal optimum (KAO)</span><b style="font-size:1.5rem">Belum ditemukan</b><small>${ks.length<2?"Butuh minimal 2 kadar aspal berbeda.":"Tidak ada kadar aspal yang memenuhi semua syarat."}</small></div>`;
  $("mzt").innerHTML=A.map(a=>`<tr><td>${nf(a.ka)}</td><td class="r">${a.n}</td><td class="r">${n3(a.gmb)}</td>`+MT.map(m=>{const v=a[m[0]],b=isFinite(v)&&((m[3]!=null&&v<m[3])||(m[4]!=null&&v>m[4]));return `<td class="r${b?" bad2":""}">${f1(v)}</td>`}).join("")+`</tr>`).join("");
@@ -515,6 +524,64 @@ function exportXlsxFile(){
   ws["!ref"]=`A1:H${rag}`;ws["!cols"]=[{wch:24},{wch:12},{wch:16},{wch:12},{wch:16},{wch:14},{wch:16},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws,"JMF Kelompok "+g);
  });
+ const M=MZ(),marshall={},numeric=v=>v===""||v==null?NaN:parseFloat(v);
+ const mPut=(row,col,value,formula)=>put(marshall,row,col,value,formula);
+ mPut(0,0,"Data dan hasil uji Marshall");
+ mPut(1,0,"Spesifikasi");mPut(1,1,M.sp);
+ PRM.forEach(([key,label],i)=>{mPut(2+i,0,label);mPut(2+i,1,numeric(M.g[key]))});
+ mPut(6,0,"Batas spesifikasi");
+ mPut(7,0,"Parameter");mPut(7,1,"Min");mPut(7,2,"Maks");
+ LIMS.forEach(([key,label],i)=>{
+  const limit=MZResult&&MZResult.limits.find(item=>item.key===key);
+  mPut(8+i,0,label);
+  mPut(8+i,1,limit?limit.min:numeric(M.lim[key]));
+  mPut(8+i,2,limit?limit.max:NaN);
+ });
+ const rawTitle=19,rawHeader=20,rawStart=21;
+ mPut(rawTitle,0,"Data benda uji dan perhitungan per sampel");
+ ["KA (%)","Berat kering (g)","Berat SSD (g)","Berat dalam air (g)","Stabilitas (baca)","Flow (mm)","Gmb","Gmm","VIM (%)","VMA (%)","VFA (%)","Stabilitas (kg)","MQ (kg/mm)"].forEach((label,i)=>mPut(rawHeader,i,label));
+ M.rows.forEach((test,i)=>{
+  const row=rawStart+i,excelRow=row+1;
+  const values=[test.ka,test.a,test.b,test.c,test.st,test.fl].map(numeric);
+  values.forEach((value,col)=>mPut(row,col,value));
+  const [ka,dry,ssd,water,stability,flow]=values;
+  const gsb=numeric(M.g.gsb),gse=numeric(M.g.gse),gb=numeric(M.g.gb),factor=numeric(M.g.pg)||1;
+  const gmb=dry>0&&ssd>water?dry/(ssd-water):NaN;
+  const gmm=ka>=0&&ka<100&&gse>0&&gb>0?100/((100-ka)/gse+ka/gb):NaN;
+  const vim=isFinite(gmb)&&isFinite(gmm)&&gmm!==0?100*(gmm-gmb)/gmm:NaN;
+  const vma=isFinite(gmb)&&gsb>0?100-gmb*(100-ka)/gsb:NaN;
+  const vfa=isFinite(vma)&&vma!==0&&isFinite(vim)?100*(vma-vim)/vma:NaN;
+  const correctedStability=isFinite(stability)?stability*factor:NaN;
+  const formulas=[
+   [6,gmb,`IFERROR(B${excelRow}/(C${excelRow}-D${excelRow}),"")`],
+   [7,gmm,`IFERROR(100/((100-A${excelRow})/$B$4+A${excelRow}/$B$5),"")`],
+   [8,vim,`IFERROR(100*(H${excelRow}-G${excelRow})/H${excelRow},"")`],
+   [9,vma,`IFERROR(100-G${excelRow}*(100-A${excelRow})/$B$3,"")`],
+   [10,vfa,`IFERROR(100*(K${excelRow}-I${excelRow})/K${excelRow},"")`],
+   [11,correctedStability,`IFERROR(E${excelRow}*$B$6,"")`],
+   [12,isFinite(flow)&&flow!==0?correctedStability/flow:NaN,`IFERROR(L${excelRow}/F${excelRow},"")`],
+  ];
+  formulas.forEach(([col,value,formula])=>mPut(row,col,value,formula));
+ });
+ const summaryStart=rawStart+M.rows.length+2;
+ mPut(summaryStart,0,"Rata-rata per kadar aspal");
+ ["KA (%)","Jumlah sampel","Gmb","VIM (%)","VMA (%)","VFA (%)","Stabilitas (kg)","Flow (mm)","MQ (kg/mm)"].forEach((label,i)=>mPut(summaryStart+1,i,label));
+ let endRow=Math.max(summaryStart+1,rawStart+M.rows.length-1);
+ if(MZResult){
+  MZResult.averages.forEach((average,i)=>{
+   const row=summaryStart+2+i;
+   [average.ka,average.n,average.gmb,average.vim,average.vma,average.vfa,average.st,average.fl,average.mq].forEach((value,col)=>mPut(row,col,value));
+  });
+  const kaoRow=summaryStart+3+MZResult.averages.length;
+  mPut(kaoRow,0,"Kadar aspal optimum (KAO, %)");mPut(kaoRow,1,MZResult.kao);
+  mPut(kaoRow+1,0,"Rentang yang memenuhi (KA, %)");
+  if(MZResult.range){mPut(kaoRow+1,1,MZResult.range[0]);mPut(kaoRow+1,2,MZResult.range[1])}
+  else mPut(kaoRow+1,1,"Belum ditemukan");
+  endRow=kaoRow+1;
+ }
+ marshall["!ref"]=`A1:M${endRow+1}`;
+ marshall["!cols"]=[{wch:28},{wch:18},{wch:18},{wch:20},{wch:20},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:18},{wch:14}];
+ XLSX.utils.book_append_sheet(wb,marshall,"Marshall");
  saveF("JMF-gradasi.xlsx",XLSX.write(wb,{bookType:"xlsx",type:"array"}),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
 async function svgImage(svg){
