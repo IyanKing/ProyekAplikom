@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Optimasi Gradasi Agregat</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#e6e9eb;--cd:#f7f8f8;--tx:#1b252d;--mu:#5a6772;--bd:#cdd3d8;--ac:#0e6b78;--ak:#fff;--sf:#e1e7ea;--er:#b3261e;--cr:#c8400d;--sl:#25303a;--st:#f2f5f7;--hl:#f2b705;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11171c;--cd:#1a2229;--tx:#e6ecf0;--mu:#93a1ad;--bd:#2c3741;--ac:#4fb3c2;--ak:#071418;--sf:#222d36;--er:#ff8a80;--cr:#ff8a4c;--sl:#2b3844;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#11171c;--cd:#1a2229;--tx:#e6ecf0;--mu:#93a1ad;--bd:#2c3741;--ac:#4fb3c2;--ak:#071418;--sf:#222d36;--er:#ff8a80;--cr:#ff8a4c;--sl:#2b3844;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:18px 16px 28px}
+h1,h2,.k b{font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;font-weight:700;letter-spacing:.01em}
+h1{font-size:2.1rem;line-height:1.05;margin:6px 0}
+h2{font-size:1.25rem;margin:0 0 10px}
+.s{color:var(--mu);margin:0 0 16px;max-width:62ch}
+.c{background:var(--cd);border:1px solid var(--bd);border-radius:6px;padding:14px;margin-bottom:12px}
+.g,.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}
+label{display:block;font-size:.85rem;color:var(--mu)}
+input,select{width:100%;margin-top:3px;padding:9px;font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:4px}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+button{font:inherit;font-weight:600;cursor:pointer;border:0;border-radius:4px;padding:9px 14px;background:var(--ac);color:var(--ak)}
+button.o{background:var(--sf);color:var(--tx)}
+.bt{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.h{color:var(--mu);font-size:.85rem;margin:8px 0}
+.er{color:var(--er);margin:8px 0 0}
+.w{overflow-x:auto;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{padding:6px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+th{color:var(--mu);font-weight:500}
+.r{text-align:right}
+#in th,#in td,#mi th,#mi td{padding:3px 4px}
+#in input,#mi input{width:74px;margin:0;padding:6px}
+tr.bad td{color:var(--er);font-weight:600}
+.del{background:none;color:var(--er);padding:2px 8px}
+.sl{background:var(--sl);color:var(--st);border-radius:6px;padding:16px;margin-bottom:12px}
+.sl .g{gap:14px 12px}
+.k span{display:block;font-size:.85rem;opacity:.75}
+.k b{font-size:2rem;line-height:1.15}
+.k small{display:block;color:var(--hl)}
+svg{width:100%;height:auto;display:block;margin-top:8px}
+svg text{fill:var(--mu);font-size:11px;font-family:inherit}
+.gd{stroke:var(--bd)}
+.ev{fill:var(--ac);opacity:.16}
+.lm{fill:none;stroke:var(--ac);stroke-width:2}
+.fr{fill:none;stroke:var(--mu);stroke-width:1;stroke-dasharray:3 3}
+.bl{fill:none;stroke:var(--cr);stroke-width:3}
+.dk{fill:var(--cr)}
+.dx{fill:var(--er);stroke:var(--st);stroke-width:1.5}
+.sw{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+#ta,#tj,#tk{width:100%;height:110px;margin-top:10px;font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:8px}
+.g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-top:12px}
+.sx{fill:none;stroke:var(--er);stroke-width:1.5;stroke-dasharray:5 3}
+.ko{stroke:var(--cr);stroke-width:2;stroke-dasharray:2 3}
+.bad2{color:var(--er);font-weight:600}
+.cg{background:var(--sf)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<h1>Optimasi Gradasi Agregat</h1>
+<p class="s">Masukkan hasil analisa saringan tiap fraksi, pilih spesifikasi, lalu cari proporsi campuran yang paling jauh dari batas min/maks, lengkap dengan tabel dan grafik gradasinya.</p>
+
+<section class="c">
+<h2>Spesifikasi dan fraksi</h2>
+<div class="g2">
+<label>Spesifikasi<select id="sp"></select></label>
+<label>Jumlah fraksi<select id="nf"><option>2</option><option>3</option><option>4</option></select></label>
+</div>
+<div class="w"><table id="in"><thead id="ih"></thead><tbody id="ib"></tbody></table></div>
+<div class="bt"><button class="o" id="ar">Tambah ayakan</button><button class="o" id="ex">Muat contoh</button></div>
+<p class="h">Isi % lolos tiap fraksi (A paling kasar). Batas spesifikasi mengacu pada Spesifikasi Umum Bina Marga 2018 dan bisa diedit; cocokkan dengan soal atau spesifikasi yang kamu pakai.</p>
+<p class="er" id="err" role="alert"></p>
+</section>
+
+<section class="c">
+<h2>Proporsi campuran</h2>
+<div class="g2" id="pp"></div>
+<p class="h" id="pt"></p>
+<div class="g2">
+<label>Langkah pencarian<select id="st"><option value="1">1%</option><option value="0.5">0,5%</option><option value="0.1">0,1%</option></select></label>
+<label>Berat total campuran (g)<input id="wt" type="number" step="any" min="1" value="1000" inputmode="decimal"></label>
+</div>
+<div class="bt"><button id="go">Cari proporsi optimal</button></div>
+<p class="h" id="ms"></p>
+</section>
+
+<div id="out" hidden>
+<section class="sl"><h2>Hasil campuran</h2><div class="g" id="sum"></div></section>
+<section class="c">
+<h2>Grafik gradasi</h2>
+<label style="max-width:220px">Skala sumbu X<select id="sx"><option value="log">Logaritmik</option><option value="p">Pangkat 0,45</option></select></label>
+<div id="ch"></div>
+<p class="h"><span class="sw" style="background:var(--ac);opacity:.3"></span>daerah spesifikasi <span class="sw" style="background:var(--ac);margin-left:8px"></span>batas min/maks <span class="sw" style="background:var(--cr);margin-left:8px"></span>campuran <span class="sw" style="background:var(--mu);margin-left:8px"></span>tiap fraksi (putus-putus)</p>
+</section>
+<section class="c">
+<h2>Tabel perhitungan</h2>
+<div class="w" style="margin-top:0"><table>
+<thead><tr><th>Ayakan (mm)</th><th class="r">Lolos (%)</th><th class="r">Min</th><th class="r">Maks</th><th>Evaluasi</th><th class="r">Tertahan (%)</th><th class="r">Kum. tertahan (%)</th><th class="r">Berat tertahan (g)</th></tr></thead>
+<tbody id="tb"></tbody>
+</table></div>
+<div class="bt"><button class="o" id="cp">Salin tabel (untuk Excel)</button></div>
+<textarea id="ta" hidden readonly aria-label="Tabel hasil"></textarea>
+</section>
+</div>
+<section class="c" id="jm">
+<h2>Rancangan campuran (JMF)</h2>
+<div class="g2">
+<label>Kelompok<select id="kg"><option value="1">Kelompok 1 (5%)</option><option value="2">Kelompok 2 (5,5%)</option><option value="3">Kelompok 3 (6%)</option><option value="4">Kelompok 4 (6,5%)</option></select></label>
+<label>Kadar aspal (%)<input id="ka" type="number" step="any" min="0" inputmode="decimal"></label>
+<label>Berat benda uji (g)<input id="bt" type="number" step="any" min="1" inputmode="decimal"></label>
+<label>Konstanta K<input id="kk" type="number" step="any" inputmode="decimal"></label>
+<label>Target gradasi<select id="tg"><option value="mid">Nilai tengah spesifikasi</option><option value="blend">Campuran fraksi di atas</option></select></label>
+</div>
+<div class="g" id="js" style="margin-top:12px"></div>
+<div class="w"><table><thead><tr><th>No</th><th>Jenis / ayakan</th><th class="r">Tertahan (%)</th><th class="r">Berat (g)</th></tr></thead><tbody id="jt"></tbody></table></div>
+<p class="h" id="jn"></p>
+<div class="bt"><button class="o" id="cj">Salin tabel JMF (untuk Excel)</button></div>
+<textarea id="tj" hidden readonly aria-label="Tabel JMF"></textarea>
+<h2 style="margin-top:20px">Keempat kelompok berdampingan</h2>
+<div class="w" style="margin-top:0"><table><thead id="kh"></thead><tbody id="kb"></tbody></table></div>
+<p class="h">Kolom yang disorot adalah kelompok yang sedang dipilih. Target gradasi dan berat benda uji mengikuti pengaturan di atas.</p>
+<div class="bt"><button class="o" id="ck">Salin tabel 4 kelompok (untuk Excel)</button></div>
+<textarea id="tk" hidden readonly aria-label="Tabel empat kelompok"></textarea>
+</section>
+<section class="c" id="mz">
+<h2>Uji Marshall dan kadar aspal optimum</h2>
+<div class="g2"><label>Spesifikasi<select id="mzp"><option>AC-WC</option><option>AC-BC</option><option>AC-Base</option><option>Kustom</option></select></label></div>
+<div class="g2" id="mzl" style="margin-top:10px"></div>
+<div class="g2" id="mzg" style="margin-top:10px"></div>
+<div class="w"><table id="mi"><thead><tr><th>KA (%)</th><th>Berat kering (g)</th><th>Berat SSD (g)</th><th>Berat dalam air (g)</th><th>Stabilitas (baca)</th><th>Flow (mm)</th><th></th></tr></thead><tbody id="mb"></tbody></table></div>
+<div class="bt"><button class="o" id="mar">Tambah benda uji</button><button class="o" id="mex">Muat contoh (ilustrasi)</button></div>
+<p class="h">Satu baris per benda uji; KA yang sama otomatis dirata-ratakan. Stabilitas = pembacaan × pengali (isi 1 jika sudah dalam kg). Gse = (Gsb + Gsa) / 2 bila hanya ada BJ bulk dan semu. Batas mengacu pada Spesifikasi Umum Bina Marga 2018 (Laston); sesuaikan dengan spesifikasi dosen. Data contoh hanya ilustrasi, bukan data laboratorium.</p>
+<p class="er" id="mze"></p>
+<div id="mzo" hidden>
+<div class="sl" style="margin-top:12px"><div class="g" id="mzk"></div></div>
+<div class="w"><table><thead><tr><th>KA (%)</th><th class="r">n</th><th class="r">Gmb</th><th class="r">VIM (%)</th><th class="r">VMA (%)</th><th class="r">VFA (%)</th><th class="r">Stabilitas (kg)</th><th class="r">Flow (mm)</th><th class="r">MQ (kg/mm)</th></tr></thead><tbody id="mzt"></tbody></table></div>
+<div class="g3" id="mzc2"></div>
+<div class="w"><table><thead><tr><th>Parameter</th><th>Syarat</th><th>Rentang KA yang memenuhi</th></tr></thead><tbody id="mzr"></tbody></table></div>
+<p class="h">Kurva: regresi polinomial (orde 2 bila 3 KA atau lebih) dari rata-rata tiap KA. KAO = titik tengah rentang KA yang memenuhi semua syarat. Garis merah putus-putus = batas spesifikasi, garis oranye putus-putus = KAO.</p>
+</div>
+</section>
+<section class="c" id="ex2" hidden>
+<h2>Ekspor</h2>
+<p class="h" style="margin-top:0">Excel berisi sheet Gradasi (proporsi bisa diubah, hasil ikut menghitung) dan sheet JMF Kelompok 1 sampai 4 dengan rumus hidup. Grafik diunduh sebagai gambar untuk laporan.</p>
+<div class="bt"><button id="dx">Unduh Excel (.xlsx)</button><button class="o" id="dp">Unduh grafik (.png)</button></div>
+<p class="h" id="xs" role="status"></p>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const PS={
+"AC-WC":[[25,100,100],[19,100,100],[12.5,90,100],[9.5,77,90],[4.75,53,69],[2.36,33,53],[1.18,21,40],[.6,14,30],[.3,9,22],[.15,6,15],[.075,4,9]],
+"AC-BC":[[25,100,100],[19,90,100],[12.5,75,90],[9.5,66,82],[4.75,46,64],[2.36,30,49],[1.18,18,38],[.6,12,28],[.3,7,20],[.15,5,13],[.075,4,8]],
+"AC-Base":[[37.5,100,100],[25,90,100],[19,76,90],[12.5,60,78],[9.5,52,71],[4.75,35,54],[2.36,23,41],[1.18,13,30],[.6,10,22],[.3,6,15],[.15,4,10],[.075,3,7]],
+"HRS-WC":[[19,100,100],[12.5,90,100],[9.5,75,85],[2.36,50,72],[.6,35,60],[.075,6,10]],
+"HRS-Base":[[19,100,100],[12.5,90,100],[9.5,65,90],[2.36,35,55],[.6,15,35],[.075,2,9]],
+"Latasir Kelas A":[[12.5,100,100],[9.5,90,100],[.075,4,14]],
+"Latasir Kelas B":[[12.5,100,100],[2.36,75,100],[.075,8,18]]};
+const SF=[[100,100,100],[100,100,100],[82,100,100],[40,98,100],[5,54,99],[2,12,82],[1.5,6,60],[1.2,4.5,44],[1,3.5,31],[.8,2.5,21],[.5,1.5,11]];
+const LB=["A","B","C","D"];
+const $=id=>document.getElementById(id);
+const nf=v=>v.toLocaleString("id-ID",{maximumFractionDigits:2});
+const rd=v=>Math.round(v*100)/100;
+const sv=v=>v.toLocaleString("id-ID",{maximumFractionDigits:3});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const eq=n=>{const b=Math.floor(100/n);return Array.from({length:n},(_,i)=>String(i?b:100-b*(n-1)))};
+const mkRows=k=>PS[k].map(([d,a,b])=>({d:String(d),mn:String(a),mx:String(b),f:["","","",""]}));
+let S=null,G=null,fresh=false;
+try{const j=JSON.parse(localStorage.getItem("grad_s")||"null");if(j&&Array.isArray(j.rows)&&j.rows.every(r=>r&&Array.isArray(r.f))&&[2,3,4].includes(j.n)&&Array.isArray(j.p)){j.rows.forEach(r=>{while(r.f.length<4)r.f.push("")});S=j}}catch(e){}
+function sample(){const r=mkRows("AC-WC");r.forEach((x,i)=>{x.f=SF[i].map(String).concat([""])});return{sp:"AC-WC",n:3,rows:r,p:eq(3)}}
+if(!S){S=sample();fresh=true}
+const persist=()=>{try{localStorage.setItem("grad_s",JSON.stringify(S))}catch(e){}};
+
+function optimize(F,mn,mx,step){
+ const n=F.length,m=mn.length,U=Math.round(100/step),w=step/100;
+ const lo=mn.map(v=>isNaN(v)?-Infinity:v),hi=mx.map(v=>isNaN(v)?Infinity:v);
+ const rg=lo.map((l,i)=>isFinite(l)&&isFinite(hi[i])&&hi[i]>l?hi[i]-l:0);
+ const acc=Array.from({length:n+1},()=>new Float64Array(m)),cur=new Array(n).fill(0);
+ let best=null,bf=null;
+ function leaf(){
+  const a=acc[n];let v=0,mg=Infinity,ss=0;
+  for(let i=0;i<m;i++){
+   const P=a[i];
+   if(P<lo[i])v+=lo[i]-P;else if(P>hi[i])v+=P-hi[i];
+   if(rg[i]){const g=Math.min(P-lo[i],hi[i]-P)/rg[i];if(g<mg)mg=g;ss+=((P-(lo[i]+hi[i])/2)/rg[i])**2}
+  }
+  if(v<1e-9){if(!best||mg>best.mg+1e-12||(mg>best.mg-1e-12&&ss<best.ss))best={mg,ss,u:cur.slice()}}
+  else if(!bf||v<bf.v)bf={v,u:cur.slice()};
+ }
+ function rec(d,left){
+  const A=acc[d],B=acc[d+1],f=F[d];
+  if(d===n-1){cur[d]=left;const ww=left*w;for(let i=0;i<m;i++)B[i]=A[i]+ww*f[i];leaf();return}
+  for(let u=0;u<=left;u++){cur[d]=u;const ww=u*w;for(let i=0;i<m;i++)B[i]=A[i]+ww*f[i];rec(d+1,left-u)}
+ }
+ rec(0,U);
+ return best?{ok:true,mg:best.mg,u:best.u}:{ok:false,u:bf.u};
+}
+
+function data(){
+ const errs=[];
+ const rows=S.rows.map((r,i)=>{
+  const o={d:parseFloat(r.d),mn:r.mn===""?NaN:parseFloat(r.mn),mx:r.mx===""?NaN:parseFloat(r.mx),f:r.f.slice(0,S.n).map(v=>v===""?NaN:parseFloat(v))};
+  if(!(o.d>0))errs.push(`Baris ${i+1}: isi ukuran ayakan lebih dari 0.`);
+  else if(o.f.some(isNaN))errs.push(`Ayakan ${sv(o.d)} mm: lengkapi % lolos semua fraksi.`);
+  return o;
+ });
+ if(rows.length<2)errs.push("Isi minimal dua ayakan.");
+ rows.sort((a,b)=>b.d-a.d);
+ return{rows,errs};
+}
+
+const cell=(i,c,v)=>`<td><input type="number" step="any" inputmode="decimal" data-r="${i}" data-c="${c}" value="${esc(v)}"></td>`;
+function renderIn(){
+ $("ih").innerHTML=`<tr><th>Ayakan (mm)</th><th>Min</th><th>Maks</th>${LB.slice(0,S.n).map(x=>`<th>Lolos ${x}</th>`).join("")}<th></th></tr>`;
+ $("ib").innerHTML=S.rows.map((r,i)=>`<tr>${cell(i,"d",r.d)}${cell(i,"mn",r.mn)}${cell(i,"mx",r.mx)}${r.f.slice(0,S.n).map((v,k)=>cell(i,"f"+k,v)).join("")}<td><button class="del" data-x="${i}" aria-label="Hapus ayakan">✕</button></td></tr>`).join("");
+}
+function renderP(){
+ $("pp").innerHTML=LB.slice(0,S.n).map((x,k)=>`<label>Fraksi ${x} (%)<input type="number" step="any" min="0" inputmode="decimal" data-p="${k}" value="${esc(S.p[k]??"")}"></label>`).join("");
+}
+
+function chart(rows){
+ const W=680,H=300,L0=44,R0=14,T0=12,B0=58,sc=$("sx").value;
+ const xf=d=>sc==="log"?Math.log10(d):Math.pow(d,.45);
+ const ds=rows.map(r=>r.d),x0=xf(Math.min(...ds)),x1=xf(Math.max(...ds));
+ const X=d=>L0+(xf(d)-x0)/((x1-x0)||1)*(W-L0-R0),Y=p=>T0+(100-Math.min(100,Math.max(0,p)))/100*(H-T0-B0);
+ const asc=rows.slice().reverse();
+ const pl=pts=>pts.map((q,i)=>(i?"L":"M")+X(q[0]).toFixed(1)+" "+Y(q[1]).toFixed(1)).join("");
+ const both=asc.filter(r=>!isNaN(r.mn)&&!isNaN(r.mx));
+ const env=both.length>1?pl(both.map(r=>[r.d,r.mx]))+both.slice().reverse().map(r=>"L"+X(r.d).toFixed(1)+" "+Y(r.mn).toFixed(1)).join("")+"Z":"";
+ let s="";
+ [0,20,40,60,80,100].forEach(p=>{s+=`<line class="gd" x1="${L0}" x2="${W-R0}" y1="${Y(p)}" y2="${Y(p)}"/><text x="${L0-6}" y="${Y(p)+4}" text-anchor="end">${p}</text>`});
+ asc.forEach(r=>{const x=X(r.d).toFixed(1);s+=`<line class="gd" x1="${x}" x2="${x}" y1="${T0}" y2="${H-B0}"/><text transform="translate(${x} ${H-B0+14}) rotate(-50)" text-anchor="end">${sv(r.d)}</text>`});
+ if(env)s+=`<path class="ev" d="${env}"/>`;
+ ["mn","mx"].forEach(k=>{s+=`<path class="lm" d="${pl(asc.filter(r=>!isNaN(r[k])).map(r=>[r.d,r[k]]))}"/>`});
+ for(let k=0;k<S.n;k++)s+=`<path class="fr" d="${pl(asc.map(r=>[r.d,r.f[k]]))}"/>`;
+ s+=`<path class="bl" d="${pl(asc.map(r=>[r.d,r.P]))}"/>`;
+ asc.forEach(r=>{s+=`<circle class="${r.ok?"dk":"dx"}" cx="${X(r.d).toFixed(1)}" cy="${Y(r.P).toFixed(1)}" r="${r.ok?3:5}"/>`});
+ s+=`<text x="${(L0+W-R0)/2}" y="${H-4}" text-anchor="middle">Ukuran ayakan (mm), skala ${sc==="log"?"logaritmik":"pangkat 0,45"}</text><text transform="translate(12 ${(T0+H-B0)/2}) rotate(-90)" text-anchor="middle">% lolos</text>`;
+ return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik gradasi agregat gabungan">${s}</svg>`;
+}
+
+function refresh(){refresh0();jmf()}
+function refresh0(){
+ const {rows,errs}=data();
+ $("err").innerHTML=errs.map(esc).join("<br>");
+ const pr=S.p.slice(0,S.n).map(v=>parseFloat(v)||0),tot=pr.reduce((a,b)=>a+b,0);
+ $("pt").textContent=`Total proporsi: ${nf(tot)}%`+(Math.abs(tot-100)>0.01?" (seharusnya 100%, hasil dihitung proporsional)":"");
+ if(errs.length||tot<=0){$("out").hidden=true;G=null;return}
+ const W=parseFloat($("wt").value)||1000,w=pr.map(v=>v/tot);
+ const res=rows.map(r=>{
+  const P=r.f.reduce((s,v,k)=>s+v*w[k],0),ok=!(P<r.mn-1e-9||P>r.mx+1e-9);
+  const rg=isFinite(r.mn)&&isFinite(r.mx)&&r.mx>r.mn?r.mx-r.mn:0;
+  return{...r,P,ok,g:rg?Math.min(P-r.mn,r.mx-P)/rg:Infinity};
+ });
+ G={res,W};
+ const bad=res.filter(r=>!r.ok).length,mg=Math.min(...res.map(r=>r.g));
+ $("sum").innerHTML=`<div class="k"><span>Status gradasi</span><b style="font-size:1.5rem">${bad?`Tidak memenuhi (${bad} ayakan)`:"Memenuhi spesifikasi"}</b></div><div class="k"><span>Margin terkecil dari batas</span><b>${isFinite(mg)?nf(mg*100)+"%":"–"}</b><small>0% tepat di batas, 50% tepat di tengah</small></div>`+pr.map((v,k)=>`<div class="k"><span>Fraksi ${LB[k]} (${nf(w[k]*100)}%)</span><b>${nf(w[k]*W)} g</b></div>`).join("");
+ $("ch").innerHTML=chart(res);
+ let prev=100;
+ $("tb").innerHTML=res.map(r=>{const t=prev-r.P;prev=r.P;return `<tr class="${r.ok?"":"bad"}"><td>${sv(r.d)}</td><td class="r">${nf(r.P)}</td><td class="r">${isNaN(r.mn)?"–":nf(r.mn)}</td><td class="r">${isNaN(r.mx)?"–":nf(r.mx)}</td><td>${r.ok?"Memenuhi":r.P<r.mn?"Di bawah min":"Di atas maks"}</td><td class="r">${nf(t)}</td><td class="r">${nf(100-r.P)}</td><td class="r">${nf(t*W/100)}</td></tr>`}).join("")+`<tr><td>Pan</td><td class="r">–</td><td></td><td></td><td></td><td class="r">${nf(prev)}</td><td class="r">100</td><td class="r">${nf(prev*W/100)}</td></tr>`;
+ $("out").hidden=false;
+}
+
+const JD={kg:"2",ka:"5.5",k:"0.75",bt:"1200",tg:"mid"},KAS={1:5,2:5.5,3:6,4:6.5};
+const J=()=>S.jm||(S.jm={...JD});
+let GJ=null;
+function jmInit(){const j=J();$("kg").value=j.kg;$("ka").value=j.ka;$("kk").value=j.k;$("bt").value=j.bt;$("tg").value=j.tg}
+function jmf(){
+ const j=J();
+ const msg=t=>{$("js").innerHTML="";$("jt").innerHTML="";$("jn").textContent=t;GJ=null;$("kh").innerHTML="";$("kb").innerHTML="";GK=null};
+ let R;
+ if(j.tg==="blend"){if(!G)return msg("Lengkapi data fraksi dan proporsi di atas dulu untuk memakai target dari campuran.");R=G.res}
+ else{
+  R=S.rows.map(r=>({d:parseFloat(r.d),mn:parseFloat(r.mn),mx:parseFloat(r.mx)})).filter(r=>r.d>0).sort((a,b)=>b.d-a.d);
+  if(R.length<2||R.some(r=>isNaN(r.mn)||isNaN(r.mx)))return msg("Isi ayakan serta batas min dan maks di atas dulu.");
+  R.forEach(r=>{r.P=(r.mn+r.mx)/2});
+ }
+ const KA=parseFloat(j.ka),BT=parseFloat(j.bt),K=parseFloat(j.k);
+ if(!(KA>=0&&KA<100)||!(BT>0)||isNaN(K))return msg("Isi kadar aspal, berat benda uji, dan konstanta K.");
+ let prev=100;
+ const T=R.map(r=>{const t=prev-r.P;prev=r.P;return{d:r.d,t}}),pan=prev;
+ const ca=T.filter(x=>x.d>=4.75).reduce((s,x)=>s+x.t,0),fa=T.filter(x=>x.d<4.75).reduce((s,x)=>s+x.t,0);
+ const pb=0.035*ca+0.045*fa+0.18*pan+K,ag=BT*(1-KA/100),as=BT*KA/100;
+ $("js").innerHTML=[["Pb (rumus)",nf(pb)+"%","dibulatkan 0,5%: "+nf(Math.round(pb*2)/2)+"%"],["Aspal Pen 60/70 ("+nf(KA)+"%)",nf(as)+" g",""],["Agregat",nf(ag)+" g","dari total "+nf(BT)+" g"],["%CA / %FA / %FF",nf(ca)+" / "+nf(fa)+" / "+nf(pan),""]].map(c=>`<div class="k"><span>${c[0]}</span><b>${c[1]}</b><small style="color:var(--mu)">${c[2]}</small></div>`).join("");
+ GJ=[];let h="";
+ const fm=v=>typeof v==="number"?nf(v):v,fr=v=>typeof v==="number"?rd(v):v;
+ const add=(a,b,c,d)=>{h+=`<tr><td>${a}</td><td>${b}</td><td class="r">${fm(c)}</td><td class="r">${fm(d)}</td></tr>`;GJ.push([a,b,fr(c),fr(d)])};
+ const grp=(a,b)=>{h+=`<tr><th>${a}</th><th colspan="3">${b}</th></tr>`;GJ.push([a,b,"",""])};
+ add("A","Aspal Pen 60/70","",as);add("B","Agregat",100,ag);
+ grp("C","Agregat kasar (tertahan saringan No.4)");
+ T.filter(x=>x.d>=4.75).forEach(x=>add("",sv(x.d)+" mm",x.t,x.t*ag/100));
+ grp("D","Agregat halus (lolos saringan No.4)");
+ T.filter(x=>x.d<4.75).forEach(x=>add("",sv(x.d)+" mm",x.t,x.t*ag/100));
+ grp("E","Filler");add("","Pan",pan,pan*ag/100);
+ $("jt").innerHTML=h;
+ $("jn").textContent=`Pb = 0,035(%CA) + 0,045(%FA) + 0,18(%FF) + K. Target gradasi: ${j.tg==="mid"?"nilai tengah spesifikasi":"campuran fraksi"}. Kadar aspal mengikuti kelompok (bisa diubah).`;
+ kmp(R,T,pan,BT,j);
+}
+let GK=null;
+function kmp(R,T,pan,BT,j){
+ const sel=+j.kg,ka=g=>(g===sel&&parseFloat(j.ka)>=0)?parseFloat(j.ka):KAS[g];
+ const gs=[1,2,3,4],ag=gs.map(g=>BT*(1-ka(g)/100)),as=gs.map(g=>BT*ka(g)/100),col=g=>g===sel?" cg":"";
+ $("kh").innerHTML=`<tr><th>Jenis / ayakan</th><th class="r">Tertahan (%)</th>${gs.map(g=>`<th class="r${col(g)}">Kelompok ${g} (${nf(ka(g))}%)</th>`).join("")}</tr>`;
+ GK=[["Jenis / ayakan","Tertahan (%)",...gs.map(g=>`Kelompok ${g} (${nf(ka(g))}%) (g)`)]];
+ let h="";
+ const row=(a,p,v,b)=>{h+=`<tr${b?' style="font-weight:600"':""}><td>${a}</td><td class="r">${p===""?"":nf(p)}</td>${v.map((x,i)=>`<td class="r${col(gs[i])}">${nf(x)}</td>`).join("")}</tr>`;GK.push([a,p===""?"":rd(p),...v.map(rd)])};
+ const grp=a=>{h+=`<tr><th colspan="6">${a}</th></tr>`;GK.push([a,"","","","",""])};
+ row("Aspal Pen 60/70","",as,1);row("Agregat",100,ag,1);
+ grp("Agregat kasar (tertahan saringan No.4)");
+ T.filter(x=>x.d>=4.75).forEach(x=>row(sv(x.d)+" mm",x.t,ag.map(a=>x.t*a/100)));
+ grp("Agregat halus (lolos saringan No.4)");
+ T.filter(x=>x.d<4.75).forEach(x=>row(sv(x.d)+" mm",x.t,ag.map(a=>x.t*a/100)));
+ grp("Filler");row("Pan",pan,ag.map(a=>pan*a/100));
+ row("Total benda uji","",gs.map(()=>BT),1);
+ $("kb").innerHTML=h;
+}
+$("ck").onclick=()=>{
+ if(!GK)return;
+ const ta=$("tk");ta.value=GK.map(x=>x.join("\t")).join("\n");ta.hidden=false;ta.select();
+ try{navigator.clipboard.writeText(ta.value).catch(()=>{})}catch(e){}
+};
+$("kg").onchange=()=>{const j=J();j.kg=$("kg").value;j.ka=String(KAS[j.kg]);$("ka").value=j.ka;persist();jmf()};
+$("ka").oninput=()=>{J().ka=$("ka").value;persist();jmf()};
+$("kk").oninput=()=>{J().k=$("kk").value;persist();jmf()};
+$("bt").oninput=()=>{J().bt=$("bt").value;persist();jmf()};
+$("tg").onchange=()=>{J().tg=$("tg").value;persist();jmf()};
+$("cj").onclick=()=>{
+ if(!GJ)return;
+ const ta=$("tj");ta.value=[["No","Jenis / ayakan","Tertahan (%)","Berat (g)"]].concat(GJ).map(x=>x.join("\t")).join("\n");ta.hidden=false;ta.select();
+ try{navigator.clipboard.writeText(ta.value).catch(()=>{})}catch(e){}
+};
+const MP={"AC-WC":{vi1:3,vi2:5,vma:15,vfa:65,st:800,fl1:2,fl2:4,mq:250},"AC-BC":{vi1:3,vi2:5,vma:14,vfa:65,st:800,fl1:2,fl2:4,mq:250},"AC-Base":{vi1:3,vi2:5,vma:13,vfa:65,st:1800,fl1:3,fl2:6,mq:""}};
+const LIMS=[["vi1","VIM min (%)"],["vi2","VIM maks (%)"],["vma","VMA min (%)"],["vfa","VFA min (%)"],["st","Stabilitas min (kg)"],["fl1","Flow min (mm)"],["fl2","Flow maks (mm)"],["mq","MQ min (kg/mm)"]];
+const PRM=[["gsb","BJ bulk agregat (Gsb)"],["gse","BJ efektif agregat (Gse)"],["gb","BJ aspal (Gb)"],["pg","Pengali stabilitas"]];
+const limOf=k=>Object.fromEntries(Object.entries(MP[k]).map(([a,b])=>[a,String(b)]));
+const MZ=()=>S.mz||(S.mz={sp:"AC-WC",lim:limOf("AC-WC"),g:{gsb:"",gse:"",gb:"1.03",pg:"1"},rows:[]});
+function pfit(xs,ys){
+ const p=xs.map((x,i)=>[x,ys[i]]).filter(q=>isFinite(q[1]));
+ const d=Math.min(2,p.length-1);if(d<1)return null;
+ const xm=p.reduce((s,q)=>s+q[0],0)/p.length,n=d+1,A=Array.from({length:n},()=>new Array(n+1).fill(0));
+ p.forEach(([x,y])=>{const u=x-xm;for(let i=0;i<n;i++){for(let j=0;j<n;j++)A[i][j]+=u**(i+j);A[i][n]+=y*u**i}});
+ for(let i=0;i<n;i++){let m=i;for(let r=i+1;r<n;r++)if(Math.abs(A[r][i])>Math.abs(A[m][i]))m=r;[A[i],A[m]]=[A[m],A[i]];if(Math.abs(A[i][i])<1e-12)return null;for(let r=0;r<n;r++)if(r!==i){const f=A[r][i]/A[i][i];for(let c=i;c<=n;c++)A[r][c]-=f*A[i][c]}}
+ return{xm,c:A.map((row,i)=>row[n]/row[i])};
+}
+const pev=(f,x)=>f.c.reduce((s,v,i)=>s+v*(x-f.xm)**i,0);
+function mini(t,u,xs,ys,f,lo,hi,kao){
+ const W=320,H=200,L=46,R=10,T=24,B=32,xa=Math.min(...xs),xb=Math.max(...xs),sx=(xb-xa)||1;
+ const gx=Array.from({length:41},(_,i)=>xa+sx*i/40),fy=f?gx.map(x=>pev(f,x)):[];
+ const all=[...ys.filter(isFinite),...fy,...[lo,hi].filter(v=>v!=null)];
+ if(!all.length)return "";
+ let ya=Math.min(...all),yb=Math.max(...all);const pd=(yb-ya)*.1||1;ya-=pd;yb+=pd;
+ const X=x=>L+(x-xa)/sx*(W-L-R),Y=y=>T+(yb-y)/(yb-ya)*(H-T-B);
+ let s=`<text x="${L}" y="14" style="fill:var(--tx);font-weight:600;font-size:12px">${t} (${u})</text>`;
+ for(let i=0;i<=3;i++){const y=ya+(yb-ya)*i/3;s+=`<line class="gd" x1="${L}" x2="${W-R}" y1="${Y(y).toFixed(1)}" y2="${Y(y).toFixed(1)}"/><text x="${L-5}" y="${(Y(y)+4).toFixed(1)}" text-anchor="end">${nf(y)}</text>`}
+ xs.forEach(x=>{s+=`<text x="${X(x).toFixed(1)}" y="${H-16}" text-anchor="middle">${nf(x)}</text>`});
+ [lo,hi].forEach(v=>{if(v!=null)s+=`<line class="sx" x1="${L}" x2="${W-R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/>`});
+ if(kao!=null&&kao>=xa&&kao<=xb)s+=`<line class="ko" x1="${X(kao).toFixed(1)}" x2="${X(kao).toFixed(1)}" y1="${T}" y2="${H-B}"/>`;
+ if(f)s+=`<path class="lm" d="${gx.map((x,i)=>(i?"L":"M")+X(x).toFixed(1)+" "+Y(fy[i]).toFixed(1)).join("")}"/>`;
+ xs.forEach((x,i)=>{if(isFinite(ys[i]))s+=`<circle class="dk" cx="${X(x).toFixed(1)}" cy="${Y(ys[i]).toFixed(1)}" r="3.5"/>`});
+ s+=`<text x="${(L+W-R)/2}" y="${H-2}" text-anchor="middle" style="font-size:10px">Kadar aspal (%)</text>`;
+ return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik ${t} terhadap kadar aspal">${s}</svg>`;
+}
+function mzCalc(){
+ const M=MZ(),num=v=>parseFloat(v),ln=v=>{const x=parseFloat(v);return isNaN(x)?null:x};
+ const gsb=num(M.g.gsb),gse=num(M.g.gse),gb=num(M.g.gb),pg=num(M.g.pg)||1;
+ const rows=M.rows.map(r=>({ka:num(r.ka),a:num(r.a),b:num(r.b),c:num(r.c),st:num(r.st),fl:num(r.fl)})).filter(r=>r.ka>=0&&r.a>0&&r.b>r.c);
+ const msg=t=>{$("mze").textContent=t;$("mzo").hidden=true};
+ if(!rows.length)return msg("Isi data benda uji atau tekan Muat contoh.");
+ if(!(gsb>0&&gse>0&&gb>0))return msg("Isi BJ bulk (Gsb), BJ efektif (Gse), dan BJ aspal (Gb).");
+ $("mze").textContent="";
+ const sp=rows.map(r=>{const gmb=r.a/(r.b-r.c),gmm=100/((100-r.ka)/gse+r.ka/gb),vim=100*(gmm-gmb)/gmm,vma=100-gmb*(100-r.ka)/gsb,st=r.st*pg;return{ka:r.ka,gmb,vim,vma,vfa:100*(vma-vim)/vma,st,fl:r.fl,mq:st/r.fl}});
+ const grp=new Map();
+ sp.forEach(s=>{const k=Math.round(s.ka*1000)/1000;if(!grp.has(k))grp.set(k,[]);grp.get(k).push(s)});
+ const ks=[...grp.keys()].sort((a,b)=>a-b);
+ const mean=(a,f)=>{const v=a.map(f).filter(isFinite);return v.length?v.reduce((x,y)=>x+y,0)/v.length:NaN};
+ const A=ks.map(k=>{const a=grp.get(k),o={ka:k,n:a.length};["gmb","vim","vma","vfa","st","fl","mq"].forEach(q=>{o[q]=mean(a,s=>s[q])});return o});
+ const L=M.lim,MT=[["vim","VIM","%",ln(L.vi1),ln(L.vi2)],["vma","VMA","%",ln(L.vma),null],["vfa","VFA","%",ln(L.vfa),null],["st","Stabilitas","kg",ln(L.st),null],["fl","Flow","mm",ln(L.fl1),ln(L.fl2)],["mq","MQ","kg/mm",ln(L.mq),null]];
+ const fits=MT.map(m=>pfit(ks,A.map(a=>a[m[0]])));
+ const x0=ks[0],x1=ks[ks.length-1],N=Math.max(1,Math.round((x1-x0)/0.01)),grid=Array.from({length:N+1},(_,i)=>x0+(x1-x0)*i/N);
+ const hasL=m=>m[3]!=null||m[4]!=null;
+ const okAt=(i,x)=>{const y=pev(fits[i],x),m=MT[i];return !((m[3]!=null&&y<m[3])||(m[4]!=null&&y>m[4]))};
+ const all=ks.length<2?[]:grid.map(x=>MT.every((m,i)=>!hasL(m)||!fits[i]||okAt(i,x)));
+ let best=null,s0=-1;
+ all.forEach((v,i)=>{if(v&&s0<0)s0=i;if((!v||i===all.length-1)&&s0>=0){const e=v?i:i-1;if(!best||e-s0>best[1]-best[0])best=[s0,e];s0=-1}});
+ const kao=best?(grid[best[0]]+grid[best[1]])/2:null;
+ const f1=v=>isFinite(v)?nf(v):"–",n3=v=>isFinite(v)?v.toLocaleString("id-ID",{maximumFractionDigits:3}):"–";
+ $("mzk").innerHTML=kao!=null?`<div class="k"><span>Kadar aspal optimum (KAO)</span><b>${nf(Math.round(kao*100)/100)}%</b><small>titik tengah rentang yang memenuhi semua syarat</small></div><div class="k"><span>Rentang yang memenuhi</span><b style="font-size:1.5rem">${nf(grid[best[0]])} – ${nf(grid[best[1]])}%</b></div><div class="k"><span>Perkiraan pada KAO</span><small style="color:var(--st)">${MT.map((m,i)=>fits[i]?`${m[1]} ${nf(pev(fits[i],kao))}`:"").filter(Boolean).join(" · ")}</small></div>`:`<div class="k"><span>Kadar aspal optimum (KAO)</span><b style="font-size:1.5rem">Belum ditemukan</b><small>${ks.length<2?"Butuh minimal 2 kadar aspal berbeda.":"Tidak ada kadar aspal yang memenuhi semua syarat."}</small></div>`;
+ $("mzt").innerHTML=A.map(a=>`<tr><td>${nf(a.ka)}</td><td class="r">${a.n}</td><td class="r">${n3(a.gmb)}</td>`+MT.map(m=>{const v=a[m[0]],b=isFinite(v)&&((m[3]!=null&&v<m[3])||(m[4]!=null&&v>m[4]));return `<td class="r${b?" bad2":""}">${f1(v)}</td>`}).join("")+`</tr>`).join("");
+ $("mzc2").innerHTML=MT.map((m,i)=>mini(m[1],m[2],ks,A.map(a=>a[m[0]]),fits[i],m[3],m[4],kao)).join("");
+ $("mzr").innerHTML=MT.map((m,i)=>{
+  const lim=!hasL(m)?"–":(m[3]!=null?"≥ "+nf(m[3]):"")+(m[3]!=null&&m[4]!=null?" dan ":"")+(m[4]!=null?"≤ "+nf(m[4]):"");
+  let r="–";
+  if(fits[i]&&hasL(m)){const p=grid.filter(x=>okAt(i,x));r=p.length?`${nf(p[0])} – ${nf(p[p.length-1])}%`:"tidak ada"}
+  return `<tr><td>${m[1]} (${m[2]})</td><td>${lim}</td><td>${r}</td></tr>`;
+ }).join("");
+ $("mzo").hidden=false;
+}
+function mzRows(){
+ $("mb").innerHTML=MZ().rows.map((r,i)=>`<tr>${["ka","a","b","c","st","fl"].map(k=>`<td><input type="number" step="any" inputmode="decimal" data-mr="${i}" data-mc="${k}" value="${esc(r[k]??"")}"></td>`).join("")}<td><button class="del" data-x="${i}" aria-label="Hapus benda uji">✕</button></td></tr>`).join("");
+}
+function mzInit(){
+ const M=MZ();
+ $("mzp").value=M.sp;
+ $("mzl").innerHTML=LIMS.map(([k,t])=>`<label>${t}<input type="number" step="any" inputmode="decimal" data-mz="lim:${k}" value="${esc(M.lim[k]??"")}"></label>`).join("");
+ $("mzg").innerHTML=PRM.map(([k,t])=>`<label>${t}<input type="number" step="any" inputmode="decimal" data-mz="g:${k}" value="${esc(M.g[k]??"")}"></label>`).join("");
+ mzRows();mzCalc();
+}
+$("mz").oninput=e=>{
+ const t=e.target,M=MZ();
+ if(t.dataset.mz){const [g,k]=t.dataset.mz.split(":");M[g][k]=t.value;if(g==="lim"){M.sp="Kustom";$("mzp").value="Kustom"}}
+ else if(t.dataset.mr!==undefined)M.rows[+t.dataset.mr][t.dataset.mc]=t.value;
+ else return;
+ persist();mzCalc();
+};
+$("mz").onclick=e=>{const b=e.target.closest(".del");if(b){MZ().rows.splice(+b.dataset.x,1);persist();mzRows();mzCalc()}};
+$("mzp").onchange=()=>{const M=MZ(),k=$("mzp").value;M.sp=k;if(MP[k])M.lim=limOf(k);persist();mzInit()};
+$("mar").onclick=()=>{MZ().rows.push({ka:"",a:"",b:"",c:"",st:"",fl:""});persist();mzRows()};
+$("mex").onclick=()=>{
+ const M=MZ();
+ M.g={gsb:"2.65",gse:"2.70",gb:"1.03",pg:"1"};
+ M.rows=[[5,1203,695,1030,2.5],[5,1203,694,1050,2.6],[5,1203,693,1070,2.7],[5.5,1202,696,1130,2.9],[5.5,1202,695,1150,3],[5.5,1202,694,1170,3.1],[6,1202,697,1100,3.3],[6,1202,696,1120,3.4],[6,1202,695,1140,3.5],[6.5,1201,696,960,3.8],[6.5,1201,695,980,3.9],[6.5,1201,694,1000,4]].map(([ka,b,c,st,fl])=>({ka:String(ka),a:"1200",b:String(b),c:String(c),st:String(st),fl:String(fl)}));
+ persist();mzInit();
+};
+let DL=null;
+try{if(window.claude&&claude.use)claude.use("downloads").then(d=>{if(d){DL=d;$("ex2").hidden=false}},()=>{})}catch(e){}
+const xs=t=>{$("xs").textContent=t};
+async function saveF(name,data){
+ try{await DL.save({filename:name,data});xs("Berkas dikirim ke perangkat: "+name+".")}
+ catch(e){xs(e&&e.code==="declined"?"Unduhan dibatalkan.":"Unduhan gagal ("+(e&&e.code||"error")+").")}
+}
+function exportXlsx(){
+ if(typeof XLSX==="undefined")return xs("Pustaka Excel gagal dimuat. Muat ulang halaman.");
+ const j=J(),E=XLSX.utils.encode_cell,C=XLSX.utils.encode_col,blend=j.tg==="blend",wb=XLSX.utils.book_new();
+ if(blend&&!G)return xs("Target “campuran fraksi” butuh data fraksi yang lengkap di atas.");
+ const put=(ws,r,c,v,f)=>{if(v===undefined||v===""||(typeof v==="number"&&isNaN(v)))return;const o={t:typeof v==="number"?"n":"s",v};if(f)o.f=f;ws[E({r,c})]=o};
+ if(G){
+  const ws={},n=S.n,res=G.res,m=res.length,pc=3+n,pr=S.p.slice(0,n).map(v=>parseFloat(v)||0),c1=C(3),c2=C(2+n),L=C(pc);
+  put(ws,0,0,"Gradasi agregat gabungan");put(ws,1,0,"Berat total (g)");put(ws,1,1,G.W);
+  ["Ayakan (mm)","Min","Maks",...LB.slice(0,n).map(x=>"Lolos "+x),"Lolos campuran (%)","Evaluasi","Tertahan (%)","Kum. tertahan (%)","Berat tertahan (g)"].forEach((h,c)=>put(ws,2,c,h));
+  put(ws,3,0,"Proporsi (%)");pr.forEach((v,k)=>put(ws,3,3+k,v));
+  let prev=100;
+  res.forEach((r,i)=>{
+   const R=i+5,t=prev-r.P;prev=r.P;
+   put(ws,R-1,0,r.d);put(ws,R-1,1,r.mn);put(ws,R-1,2,r.mx);r.f.forEach((v,k)=>put(ws,R-1,3+k,v));
+   put(ws,R-1,pc,r.P,`SUMPRODUCT($${c1}$4:$${c2}$4,${c1}${R}:${c2}${R})/SUM($${c1}$4:$${c2}$4)`);
+   put(ws,R-1,pc+1,r.ok?"Memenuhi":r.P<r.mn?"Di bawah min":"Di atas maks",`IF(OR(AND(ISNUMBER(B${R}),${L}${R}<B${R}-0.000000001),AND(ISNUMBER(C${R}),${L}${R}>C${R}+0.000000001)),IF(AND(ISNUMBER(B${R}),${L}${R}<B${R}),"Di bawah min","Di atas maks"),"Memenuhi")`);
+   put(ws,R-1,pc+2,t,i?`${L}${R-1}-${L}${R}`:`100-${L}${R}`);
+   put(ws,R-1,pc+3,100-r.P,`100-${L}${R}`);
+   put(ws,R-1,pc+4,t*G.W/100,`${C(pc+2)}${R}/100*$B$2`);
+  });
+  const R=m+5;
+  put(ws,R-1,0,"Pan");put(ws,R-1,pc+2,prev,`${L}${R-1}`);put(ws,R-1,pc+3,100);put(ws,R-1,pc+4,prev*G.W/100,`${C(pc+2)}${R}/100*$B$2`);
+  ws["!ref"]=`A1:${C(pc+4)}${R}`;ws["!cols"]=Array.from({length:pc+5},(_,c)=>({wch:c===pc+1?14:12}));
+  XLSX.utils.book_append_sheet(wb,ws,"Gradasi");
+ }
+ let R0;
+ if(blend)R0=G.res.map((r,i)=>({d:r.d,mn:r.mn,mx:r.mx,P:r.P,gr:i+5}));
+ else{
+  R0=S.rows.map(r=>({d:parseFloat(r.d),mn:parseFloat(r.mn),mx:parseFloat(r.mx)})).filter(r=>r.d>0).sort((a,b)=>b.d-a.d);
+  if(R0.length<2||R0.some(r=>isNaN(r.mn)||isNaN(r.mx)))return xs("Isi ayakan serta batas min dan maks di atas dulu.");
+  R0.forEach(r=>{r.P=(r.mn+r.mx)/2});
+ }
+ const K=parseFloat(j.k),BT=parseFloat(j.bt);
+ if(isNaN(K)||!(BT>0))return xs("Isi konstanta K dan berat benda uji dulu.");
+ const m=R0.length;
+ let prev=100;
+ const T=R0.map(r=>{const t=prev-r.P;prev=r.P;return t}),pan=prev;
+ const ca=R0.reduce((s,r,i)=>s+(r.d>=4.75?T[i]:0),0),fa=R0.reduce((s,r,i)=>s+(r.d<4.75?T[i]:0),0),pb=0.035*ca+0.045*fa+0.18*pan+K;
+ [1,2,3,4].forEach(g=>{
+  const KA=(g===+j.kg&&parseFloat(j.ka)>=0)?parseFloat(j.ka):KAS[g],as=BT*KA/100,ag=BT-as,ws={},rp=4+m,last=3+m;
+  const rca=m+6,rfa=m+7,rff=m+8,rk=m+9,rpb=m+10,rrd=m+11,rbt=m+12,rka=m+13,ras=m+14,rag=m+15;
+  put(ws,0,0,`Rancangan campuran (JMF) Kelompok ${g}`);
+  ["Ayakan (mm)","Batas bawah","Target (% lolos)","Batas atas","Kum. tertahan (%)","Tertahan (%)","Jenis agregat","Berat (g)"].forEach((h,c)=>put(ws,2,c,h));
+  R0.forEach((r,i)=>{
+   const R=4+i;
+   put(ws,R-1,0,r.d);put(ws,R-1,1,r.mn);put(ws,R-1,3,r.mx);
+   put(ws,R-1,2,r.P,blend?`Gradasi!${C(3+S.n)}${r.gr}`:`(B${R}+D${R})/2`);
+   put(ws,R-1,4,100-r.P,`100-C${R}`);
+   put(ws,R-1,5,T[i],i?`E${R}-E${R-1}`:`E${R}`);
+   put(ws,R-1,6,r.d>=4.75?"Agregat kasar":"Agregat halus");
+   put(ws,R-1,7,T[i]*ag/100,`F${R}/100*$B$${rag}`);
+  });
+  put(ws,rp-1,0,"Pan");put(ws,rp-1,2,0);put(ws,rp-1,4,100,`100-C${rp}`);put(ws,rp-1,5,pan,`E${rp}-E${rp-1}`);put(ws,rp-1,6,"Filler");put(ws,rp-1,7,pan*ag/100,`F${rp}/100*$B$${rag}`);
+  const lab=[["%CA",ca,`SUMIF($G$4:$G$${last},"Agregat kasar",$F$4:$F$${last})`],["%FA",fa,`SUMIF($G$4:$G$${last},"Agregat halus",$F$4:$F$${last})`],["%FF",pan,`F${rp}`],["K",K],["Pb (%)",pb,`0.035*B${rca}+0.045*B${rfa}+0.18*B${rff}+B${rk}`],["Pembulatan 0,5%",Math.round(pb*2)/2,`MROUND(B${rpb},0.5)`],["Berat total benda uji (g)",BT],["Kadar aspal (%)",KA],["Berat aspal (g)",as,`B${rka}/100*B${rbt}`],["Berat agregat (g)",ag,`B${rbt}-B${ras}`]];
+  lab.forEach((x,i)=>{put(ws,rca-1+i,0,x[0]);put(ws,rca-1+i,1,x[1],x[2])});
+  ws["!ref"]=`A1:H${rag}`;ws["!cols"]=[{wch:24},{wch:12},{wch:16},{wch:12},{wch:16},{wch:14},{wch:16},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws,"JMF Kelompok "+g);
+ });
+ saveF("JMF-gradasi.xlsx",XLSX.write(wb,{bookType:"xlsx",type:"array"}));
+}
+async function exportPng(){
+ const svg=document.querySelector("#ch svg");
+ if(!svg)return xs("Hitung campuran fraksi dulu agar grafik tersedia.");
+ try{
+  const c=svg.cloneNode(true),src=svg.querySelectorAll("*"),dst=c.querySelectorAll("*");
+  src.forEach((e,i)=>{const cs=getComputedStyle(e);["fill","stroke","stroke-width","stroke-dasharray","opacity","font-size","font-family"].forEach(p=>dst[i].style.setProperty(p,cs.getPropertyValue(p)))});
+  const vb=svg.viewBox.baseVal,W=vb.width*2,H=vb.height*2;
+  c.setAttribute("xmlns","http://www.w3.org/2000/svg");c.setAttribute("width",W);c.setAttribute("height",H);
+  const bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
+  bg.setAttribute("width",vb.width);bg.setAttribute("height",vb.height);bg.setAttribute("fill",getComputedStyle(document.documentElement).getPropertyValue("--cd").trim()||"#fff");
+  c.insertBefore(bg,c.firstChild);
+  const img=new Image();
+  await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(c))});
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;cv.getContext("2d").drawImage(img,0,0,W,H);
+  const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+  if(!blob)return xs("Gagal membuat gambar grafik.");
+  await saveF("grafik-gradasi.png",blob);
+ }catch(e){xs("Gagal membuat gambar grafik.")}
+}
+$("dx").onclick=exportXlsx;$("dp").onclick=exportPng;
+$("ib").oninput=e=>{const t=e.target,c=t.dataset.c;if(!c)return;const r=S.rows[+t.dataset.r];if(c[0]==="f")r.f[+c.slice(1)]=t.value;else r[c]=t.value;persist();refresh()};
+$("ib").onclick=e=>{const b=e.target.closest(".del");if(b){S.rows.splice(+b.dataset.x,1);persist();renderIn();refresh()}};
+$("pp").oninput=e=>{const k=e.target.dataset.p;if(k===undefined)return;S.p[+k]=e.target.value;persist();refresh()};
+$("wt").oninput=refresh;
+$("sx").onchange=refresh;
+$("ar").onclick=()=>{S.rows.push({d:"",mn:"",mx:"",f:["","","",""]});persist();renderIn();refresh()};
+$("nf").onchange=()=>{S.n=+$("nf").value;S.p=eq(S.n);persist();renderIn();renderP();refresh()};
+$("sp").onchange=()=>{
+ const k=$("sp").value;S.sp=k;
+ if(PS[k]){const old=S.rows;S.rows=mkRows(k);S.rows.forEach(r=>{const o=old.find(x=>parseFloat(x.d)===parseFloat(r.d));if(o)r.f=o.f.slice()})}
+ persist();renderIn();refresh();
+};
+$("ex").onclick=()=>{S=sample();persist();init();$("go").click()};
+$("go").onclick=()=>{
+ const {rows,errs}=data();
+ if(errs.length){refresh();return}
+ let step=parseFloat($("st").value);if(S.n>=4&&step<0.5)step=0.5;
+ const F=Array.from({length:S.n},(_,k)=>rows.map(r=>r.f[k]));
+ const r=optimize(F,rows.map(x=>x.mn),rows.map(x=>x.mx),step);
+ S.p=r.u.map(u=>String(Math.round(u*step*100)/100));
+ $("ms").textContent=r.ok?`Proporsi optimal ditemukan (langkah ${nf(step)}%). Kamu bisa membulatkan atau mengubahnya di atas, hasil ikut diperbarui.`:"Tidak ada proporsi yang memenuhi semua batas. Ditampilkan proporsi dengan pelanggaran terkecil; coba tambah fraksi atau cek data saringan.";
+ persist();renderP();refresh();
+};
+$("cp").onclick=()=>{
+ if(!G)return;
+ const rows=[["Ayakan (mm)","Lolos (%)","Min","Maks","Tertahan (%)","Kum. tertahan (%)","Berat tertahan (g)"]];
+ let prev=100;
+ G.res.forEach(r=>{const t=prev-r.P;prev=r.P;rows.push([r.d,rd(r.P),isNaN(r.mn)?"":r.mn,isNaN(r.mx)?"":r.mx,rd(t),rd(100-r.P),rd(t*G.W/100)])});
+ rows.push(["Pan","","","",rd(prev),100,rd(prev*G.W/100)]);
+ const ta=$("ta");ta.value=rows.map(x=>x.join("\t")).join("\n");ta.hidden=false;ta.select();
+ try{navigator.clipboard.writeText(ta.value).catch(()=>{})}catch(e){}
+};
+function init(){
+ $("sp").innerHTML=Object.keys(PS).map(k=>`<option>${k}</option>`).join("")+"<option>Kustom</option>";
+ $("sp").value=PS[S.sp]?S.sp:"Kustom";
+ $("nf").value=String(S.n);jmInit();mzInit();
+ renderIn();renderP();refresh();
+}
+init();
+if(fresh)$("go").click();
+</script>
+</body>
+</html>
