@@ -16,6 +16,8 @@ main{max-width:860px;margin:0 auto;padding:18px 16px 28px}
 h1,h2,.k b{font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;font-weight:700;letter-spacing:.01em}
 h1{font-size:2.1rem;line-height:1.05;margin:6px 0}
 h2{font-size:1.25rem;margin:0 0 10px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.theme{white-space:nowrap}
 .s{color:var(--mu);margin:0 0 16px;max-width:62ch}
 .c{background:var(--cd);border:1px solid var(--bd);border-radius:6px;padding:14px;margin-bottom:12px}
 .g,.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}
@@ -50,6 +52,8 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 .bl{fill:none;stroke:var(--cr);stroke-width:3}
 .dk{fill:var(--cr)}
 .dx{fill:var(--er);stroke:var(--st);stroke-width:1.5}
+.dk,.dx{cursor:help;transition:transform .15s ease;transform-box:fill-box;transform-origin:center}
+.dk:hover,.dx:hover{transform:scale(1.5)}
 .sw{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
 #ta,#tj,#tk{width:100%;height:110px;margin-top:10px;font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:8px}
 .g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-top:12px}
@@ -62,7 +66,7 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 </head>
 <body>
 <main>
-<h1>Optimasi Gradasi Agregat</h1>
+<div class="top"><h1>Optimasi Gradasi Agregat</h1><button class="o theme" id="theme" type="button" aria-pressed="false">Mode gelap</button></div>
 <p class="s">Masukkan hasil analisa saringan tiap fraksi, pilih spesifikasi, lalu cari proporsi campuran yang paling jauh dari batas min/maks, lengkap dengan tabel dan grafik gradasinya.</p>
 
 <section class="c">
@@ -169,6 +173,20 @@ const rd=v=>Math.round(v*100)/100;
 const sv=v=>v.toLocaleString("id-ID",{maximumFractionDigits:3});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const eq=n=>{const b=Math.floor(100/n);return Array.from({length:n},(_,i)=>String(i?b:100-b*(n-1)))};
+function updateThemeButton(){
+ const root=document.documentElement,dark=root.dataset.theme==="dark"||(!root.dataset.theme&&window.matchMedia("(prefers-color-scheme: dark)").matches),button=$("theme");
+ button.textContent=dark?"Mode terang":"Mode gelap";
+ button.setAttribute("aria-pressed",String(dark));
+ button.title=dark?"Ganti ke tema terang":"Ganti ke tema gelap";
+}
+try{const theme=localStorage.getItem("grad_theme");if(theme==="light"||theme==="dark")document.documentElement.dataset.theme=theme}catch(e){}
+updateThemeButton();
+$("theme").onclick=()=>{
+ const dark=document.documentElement.dataset.theme==="dark"||(!document.documentElement.dataset.theme&&window.matchMedia("(prefers-color-scheme: dark)").matches),theme=dark?"light":"dark";
+ document.documentElement.dataset.theme=theme;
+ try{localStorage.setItem("grad_theme",theme)}catch(e){}
+ updateThemeButton();
+};
 const mkRows=k=>PS[k].map(([d,a,b])=>({d:String(d),mn:String(a),mx:String(b),f:["","","",""]}));
 let S=null,G=null,fresh=false;
 try{const j=JSON.parse(localStorage.getItem("grad_s")||"null");if(j&&Array.isArray(j.rows)&&j.rows.every(r=>r&&Array.isArray(r.f))&&[2,3,4].includes(j.n)&&Array.isArray(j.p)){j.rows.forEach(r=>{while(r.f.length<4)r.f.push("")});S=j}}catch(e){}
@@ -239,7 +257,7 @@ function chart(rows){
  ["mn","mx"].forEach(k=>{s+=`<path class="lm" d="${pl(asc.filter(r=>!isNaN(r[k])).map(r=>[r.d,r[k]]))}"/>`});
  for(let k=0;k<S.n;k++)s+=`<path class="fr" d="${pl(asc.map(r=>[r.d,r.f[k]]))}"/>`;
  s+=`<path class="bl" d="${pl(asc.map(r=>[r.d,r.P]))}"/>`;
- asc.forEach(r=>{s+=`<circle class="${r.ok?"dk":"dx"}" cx="${X(r.d).toFixed(1)}" cy="${Y(r.P).toFixed(1)}" r="${r.ok?3:5}"/>`});
+ asc.forEach(r=>{s+=`<circle class="${r.ok?"dk":"dx"}" cx="${X(r.d).toFixed(1)}" cy="${Y(r.P).toFixed(1)}" r="${r.ok?3:5}"><title>Ayakan ${sv(r.d)} mm: ${nf(r.P)}% lolos; ${r.ok?"memenuhi spesifikasi":r.P<r.mn?"di bawah batas minimum":"di atas batas maksimum"}</title></circle>`});
  s+=`<text x="${(L0+W-R0)/2}" y="${H-4}" text-anchor="middle">Ukuran ayakan (mm), skala ${sc==="log"?"logaritmik":"pangkat 0,45"}</text><text transform="translate(12 ${(T0+H-B0)/2}) rotate(-90)" text-anchor="middle">% lolos</text>`;
  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik gradasi agregat gabungan">${s}</svg>`;
 }

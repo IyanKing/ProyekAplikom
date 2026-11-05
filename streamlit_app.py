@@ -1,9 +1,38 @@
 import streamlit as st
-import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Optimasi Gradasi Agregat", layout="wide")
+st.set_page_config(
+    page_title="Optimasi Gradasi Agregat",
+    page_icon="🏗️",
+    layout="wide",
+)
 
-with open("Optimasi Gradasi Agregat.html", "r", encoding="utf-8") as f:
-    html_content = f.read()
+pages = {
+    "Utama": [
+        st.Page(
+            "app_pages/beranda.py",
+            title="Beranda",
+            icon=":material/home:",
+            default=True,
+        ),
+        st.Page(
+            "app_pages/kalkulator.py",
+            title="Kalkulator",
+            icon=":material/calculate:",
+        ),
+    ],
+    "Informasi": [
+        st.Page(
+            "app_pages/cara_kerja.py",
+            title="Cara Kerja",
+            icon=":material/help:",
+        ),
+        st.Page(
+            "app_pages/tentang.py",
+            title="Tentang",
+            icon=":material/info:",
+        ),
+    ],
+}
 
-components.html(html_content, height=2000, scrolling=True)
+navigation = st.navigation(pages)
+navigation.run()
