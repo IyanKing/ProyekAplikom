@@ -1,14 +1,96 @@
+from html import escape
 import json
 from datetime import datetime
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
-st.title("Data Tersimpan")
-st.caption(
-    "Tinjau data gradasi, pengaturan JMF, dan data Marshall dari berkas JSON. "
-    "Tampilan dan grafik mengikuti tema aplikasi."
+import theme
+import ui
+
+ui.inject()
+
+if "data_tersimpan_mode" not in st.session_state:
+    st.session_state.data_tersimpan_mode = "dark"
+
+palette = {
+    "dark": {
+        "background": "#1b1815",
+        "panel": "#251d16",
+        "panel_alt": "#2f241b",
+        "text": "#f1e8dc",
+        "muted": "#b8a995",
+        "line": "#51402e",
+        "accent": "#e9b873",
+        "grid": "#49392a",
+        "header": "rgba(27,24,21,.84)",
+        "series": ["#e9b873", "#71c1ce", "#f28d65", "#b3d58c", "#c5a0e8", "#f0d26f"],
+    },
+    "light": {
+        "background": "#f4efe7",
+        "panel": "#fffaf2",
+        "panel_alt": "#f3eadc",
+        "text": "#30251b",
+        "muted": "#746659",
+        "line": "#dfd1bd",
+        "accent": "#9a6429",
+        "grid": "#e6dac8",
+        "header": "rgba(255,250,242,.92)",
+        "series": ["#8d5b20", "#167c8c", "#b54a30", "#547d32", "#74509a", "#977100"],
+    },
+}
+colors = palette[st.session_state.data_tersimpan_mode]
+
+st.markdown(
+    f"""
+<style>
+:root{{--bg:{colors["background"]};--panel:{colors["panel"]};--panel2:{colors["panel_alt"]};
+--line:{colors["line"]};--gold:{colors["accent"]};--tan:{colors["accent"]};
+--cream:{colors["panel_alt"]};--ink:{colors["text"]};--tx:{colors["text"]};--mu:{colors["muted"]}}}
+.stApp{{background:radial-gradient(900px 480px at 88% -6%,rgba(201,138,58,.15),transparent 62%),var(--bg)}}
+[data-testid="stAppViewContainer"]{{background:transparent}}
+[data-testid="stHeader"]{{background:{colors["header"]};backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}}
+.stApp,[data-testid="stMarkdownContainer"],[data-testid="stCaptionContainer"]{{color:var(--tx)}}
+[data-testid="stMarkdownContainer"] h2,[data-testid="stMarkdownContainer"] h3,[data-testid="stMarkdownContainer"] h4{{color:var(--tan)}}
+[data-testid="stAlert"]{{background:var(--panel);color:var(--tx);border:1px solid var(--line)}}
+[data-testid="stFileUploader"] section{{background:var(--panel);border:1px dashed var(--line);border-radius:16px}}
+[data-testid="stFileUploader"] section,[data-testid="stFileUploader"] small,[data-testid="stFileUploader"] span{{color:var(--tx)}}
+[data-testid="stFileUploader"] button,[data-testid="stDownloadButton"] button,[data-testid="stButton"] button{{
+ background:var(--panel2);color:var(--tx);border:1px solid var(--line);border-radius:999px
+}}
+[data-testid="stFileUploader"] button:hover,[data-testid="stDownloadButton"] button:hover,[data-testid="stButton"] button:hover{{
+ border-color:var(--gold);color:var(--gold)
+}}
+[data-testid="stExpander"]{{background:var(--panel);border:1px solid var(--line);border-radius:16px}}
+[data-testid="stMetric"]{{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}}
+[data-testid="stMetricLabel"],[data-testid="stMetricValue"],[data-testid="stMetricDelta"]{{color:var(--tx)}}
+.gx-data-table-wrap{{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:.35rem 0 1rem}}
+.gx-data-table{{width:100%;border-collapse:collapse;color:var(--tx);font-size:.92rem}}
+.gx-data-table th{{background:var(--panel2);color:var(--gold);font-weight:600;text-align:left;white-space:nowrap}}
+.gx-data-table td,.gx-data-table th{{padding:.62rem .8rem;border-bottom:1px solid var(--line)}}
+.gx-data-table tr:last-child td{{border-bottom:0}}
+.gx-data-table tbody tr:nth-child(even){{background:color-mix(in srgb,var(--panel-alt) 42%,transparent)}}
+.gx-theme-switch{{display:flex;justify-content:flex-end;margin-bottom:.3rem}}
+@media(max-width:640px){{.gx-data-table{{font-size:.82rem}}.gx-data-table td,.gx-data-table th{{padding:.5rem .6rem}}}}
+</style>
+""",
+    unsafe_allow_html=True,
 )
+
+switch_col, _ = st.columns([1, 5])
+with switch_col:
+    next_mode = "light" if st.session_state.data_tersimpan_mode == "dark" else "dark"
+    switch_label = "☀️ Mode terang" if next_mode == "light" else "🌙 Mode gelap"
+    if st.button(switch_label, key="data_tersimpan_toggle"):
+        st.session_state.data_tersimpan_mode = next_mode
+        st.rerun()
+
+ui.html(theme.page_head(
+    "Data tersimpan",
+    "Tinjau data gradasi, JMF, dan Marshall dari berkas yang tersimpan.",
+    "Perpustakaan data",
+))
 st.markdown(
     """
 Unggah berkas **Unduh JSON** dari halaman Kalkulator. Berkas dapat dimuat
@@ -21,6 +103,69 @@ uploaded_files = st.file_uploader(
     type=["json"],
     accept_multiple_files=True,
 )
+
+
+def _show_table(frame):
+    headers = "".join(f"<th>{escape(str(column))}</th>" for column in frame.columns)
+    body = []
+    for row in frame.itertuples(index=False, name=None):
+        cells = []
+        for value in row:
+            if value is None or pd.isna(value):
+                rendered = "—"
+            elif isinstance(value, bool):
+                rendered = "Ya" if value else "Tidak"
+            elif isinstance(value, (int, float)):
+                rendered = _format(value, 3)
+            else:
+                rendered = str(value)
+            cells.append(f"<td>{escape(rendered)}</td>")
+        body.append("<tr>" + "".join(cells) + "</tr>")
+    ui.html(
+        '<div class="gx-data-table-wrap"><table class="gx-data-table">'
+        f"<thead><tr>{headers}</tr></thead><tbody>{''.join(body)}</tbody>"
+        "</table></div>"
+    )
+
+
+def _show_line_chart(frame, x_field, y_fields, height=280, y_label=None):
+    chart_data = frame.copy()
+    chart_data[x_field] = chart_data[x_field].astype(str)
+    if y_label is None:
+        y_label = "% lolos" if x_field == "Ayakan (mm)" else y_fields[0]
+    chart = (
+        alt.Chart(chart_data)
+        .transform_fold(y_fields, as_=["Seri", "Nilai"])
+        .mark_line(point=alt.OverlayMarkDef(filled=True, size=48), strokeWidth=2.5)
+        .encode(
+            x=alt.X(f"{x_field}:O", sort=None, title=x_field),
+            y=alt.Y("Nilai:Q", title=y_label),
+            color=alt.Color(
+                "Seri:N",
+                scale=alt.Scale(range=colors["series"]),
+                legend=alt.Legend(title=None, orient="bottom"),
+            ),
+            tooltip=[
+                alt.Tooltip(f"{x_field}:O", title=x_field),
+                alt.Tooltip("Seri:N", title="Seri"),
+                alt.Tooltip("Nilai:Q", format=".2f"),
+            ],
+        )
+        .properties(height=height)
+        .configure(
+            background=colors["panel"],
+            axis=alt.AxisConfig(
+                labelColor=colors["muted"],
+                titleColor=colors["text"],
+                gridColor=colors["grid"],
+                domainColor=colors["line"],
+                tickColor=colors["line"],
+            ),
+            legend=alt.LegendConfig(labelColor=colors["text"], titleColor=colors["text"]),
+            view=alt.ViewConfig(stroke=colors["line"]),
+        )
+    )
+    st.altair_chart(chart, width="stretch")
 
 
 def _number(value):
@@ -215,11 +360,10 @@ def _show_marshall(marshall):
         "gb": "BJ aspal (Gb)",
         "pg": "Pengali stabilitas",
     }
-    st.dataframe(
-        pd.DataFrame([{"Parameter": label, "Nilai": gravity.get(field, "—")} for field, label in gravity_labels.items()]),
-        width="stretch",
-        hide_index=True,
-    )
+    _show_table(pd.DataFrame([
+        {"Parameter": label, "Nilai": gravity.get(field, "—")}
+        for field, label in gravity_labels.items()
+    ]))
 
     limits = marshall.get("lim")
     if isinstance(limits, dict) and limits:
@@ -233,15 +377,11 @@ def _show_marshall(marshall):
             "fl2": ("Flow maksimum", "mm"),
             "mq": ("MQ minimum", "kg/mm"),
         }
-        st.dataframe(
-            pd.DataFrame([
-                {"Batas": label, "Nilai": limits.get(field, "—"), "Satuan": unit}
-                for field, (label, unit) in limit_labels.items()
-                if field in limits
-            ]),
-            width="stretch",
-            hide_index=True,
-        )
+        _show_table(pd.DataFrame([
+            {"Batas": label, "Nilai": limits.get(field, "—"), "Satuan": unit}
+            for field, (label, unit) in limit_labels.items()
+            if field in limits
+        ]))
 
     sample_rows = marshall.get("rows")
     sample_rows = sample_rows if isinstance(sample_rows, list) else []
@@ -259,7 +399,7 @@ def _show_marshall(marshall):
     ]
     st.markdown("#### Data benda uji")
     if raw_table:
-        st.dataframe(pd.DataFrame(raw_table), width="stretch", hide_index=True)
+        _show_table(pd.DataFrame(raw_table))
     else:
         st.info("Belum ada data benda uji Marshall pada berkas ini.")
 
@@ -269,7 +409,7 @@ def _show_marshall(marshall):
         return
 
     st.markdown("#### Hasil perhitungan Marshall")
-    st.dataframe(pd.DataFrame(results), width="stretch", hide_index=True)
+    _show_table(pd.DataFrame(results))
     average_columns = [
         "Gmb", "VIM (%)", "VMA (%)", "VFA (%)",
         "Stabilitas (kg)", "Flow (mm)", "MQ (kg/mm)",
@@ -290,11 +430,12 @@ def _show_marshall(marshall):
             for column, (field, label) in zip(columns, chart_specs[start:start + 2]):
                 with column:
                     st.caption(label)
-                    st.line_chart(
-                        averages.set_index("KA (%)")[[field]],
-                        x_label="Kadar aspal (%)",
-                        y_label=label,
+                    _show_line_chart(
+                        averages[["KA (%)", field]],
+                        "KA (%)",
+                        [field],
                         height=230,
+                        y_label=label,
                     )
 
 
@@ -327,7 +468,7 @@ if parsed:
         })
 
     st.subheader("Ringkasan")
-    st.dataframe(pd.DataFrame(summary), width="stretch", hide_index=True)
+    _show_table(pd.DataFrame(summary))
 
     for index, name, data, raw in parsed:
         with st.expander(f"Detail: {name}"):
@@ -339,7 +480,7 @@ if parsed:
             if data["rows"]:
                 st.markdown("### Data gradasi")
                 gradation = _gradation_rows(data)
-                st.dataframe(pd.DataFrame(gradation), width="stretch", hide_index=True)
+                _show_table(pd.DataFrame(gradation))
                 count_value = data.get("n", 0)
                 count = (
                     min(max(count_value, 0), 4)
@@ -386,14 +527,7 @@ if parsed:
                     series = list(chart_data.columns[1:])
                     if chart_data[series].notna().any().any():
                         st.markdown("#### Grafik gradasi")
-                        st.line_chart(
-                            chart_data,
-                            x="Ayakan (mm)",
-                            y=series,
-                            x_label="Ayakan (dari terbesar ke terkecil)",
-                            y_label="% lolos",
-                            height=300,
-                        )
+                        _show_line_chart(chart_data, "Ayakan (mm)", series, height=300)
 
             config = data.get("jm")
             if isinstance(config, dict):
@@ -406,11 +540,10 @@ if parsed:
                     ("Berat benda uji (g)", config.get("bt", "—")),
                     ("Target gradasi", target_labels.get(config.get("tg"), config.get("tg", "—"))),
                 ]
-                st.dataframe(
-                    pd.DataFrame([{"Pengaturan": label, "Nilai": value} for label, value in setting_rows]),
-                    width="stretch",
-                    hide_index=True,
-                )
+                _show_table(pd.DataFrame([
+                    {"Pengaturan": label, "Nilai": value}
+                    for label, value in setting_rows
+                ]))
                 jmf = _jmf_results(data, config)
                 if jmf:
                     jmf_cols = st.columns(4)
@@ -423,9 +556,9 @@ if parsed:
                     jmf_table["Ayakan (mm)"] = jmf_table["Ayakan (mm)"].map(
                         lambda value: "Pan" if value == "Pan" else _format(value, 3)
                     )
-                    st.dataframe(jmf_table, width="stretch", hide_index=True)
+                    _show_table(jmf_table)
                     st.markdown("#### Berat tiap kelompok")
-                    st.dataframe(pd.DataFrame(jmf["components"]), width="stretch", hide_index=True)
+                    _show_table(pd.DataFrame(jmf["components"]))
                 else:
                     st.info("Rincian JMF belum dapat dihitung. Periksa target gradasi, ayakan, dan pengaturan JMF.")
 
