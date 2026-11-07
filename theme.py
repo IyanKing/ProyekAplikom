@@ -29,6 +29,15 @@ html,body,[class*="st-"],.stApp{font-family:'Hanken Grotesk',system-ui,sans-seri
 [data-testid="stHeader"]{background:rgba(27,24,21,.84);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 #MainMenu,footer{visibility:hidden}
 .block-container{max-width:1180px;padding-top:2.4rem;padding-bottom:4.5rem}
+@keyframes gx-page-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:no-preference){
+ [data-testid="stMainBlockContainer"],.main .block-container{
+  animation:gx-page-enter .38s cubic-bezier(.2,.7,.25,1) both
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ [data-testid="stMainBlockContainer"],.main .block-container{animation:none}
+}
 
 .gx-kicker{font:600 .78rem/1 'Hanken Grotesk',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin:0 0 1rem}
 .gx-h1{font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:clamp(2.1rem,4.4vw,3.45rem);line-height:1.1;color:var(--tan);margin:0 0 1.1rem}
