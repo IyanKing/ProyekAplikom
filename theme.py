@@ -27,6 +27,11 @@ html,body,[data-testid="stAppViewContainer"],[data-testid="stMain"]{background-c
 .stApp{background:radial-gradient(900px 480px at 88% -6%,rgba(201,138,58,.20),transparent 62%),
 radial-gradient(700px 420px at -8% 38%,rgba(201,138,58,.08),transparent 60%),var(--bg)}
 html,body,[class*="st-"],.stApp{font-family:'Hanken Grotesk',system-ui,sans-serif}
+[data-testid="stIconMaterial"],.material-symbols-rounded{
+ font-family:'Material Symbols Rounded'!important;font-weight:normal;font-style:normal;
+ letter-spacing:normal;text-transform:none;white-space:nowrap;word-wrap:normal;
+ direction:ltr;-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased
+}
 [data-testid="stHeader"]{background:rgba(27,24,21,.84);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 #MainMenu,footer{visibility:hidden}
 .block-container{max-width:1180px;padding-top:5rem;padding-bottom:4.5rem}
