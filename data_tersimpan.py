@@ -58,16 +58,14 @@ st.markdown(
 [data-testid="stMarkdownContainer"] h2,[data-testid="stMarkdownContainer"] h3,
 [data-testid="stMarkdownContainer"] h4{{margin-top:1.15rem!important;margin-bottom:.65rem!important}}
 [data-testid="stAlert"]{{background:var(--panel)!important;color:var(--tx)!important;border:1px solid var(--line)}}
-[data-testid="stAlert"] p,[data-testid="stAlert"] span{{color:var(--tx)!important;line-height:1.5}}
-[data-testid="stFileUploader"] label{{color:var(--tx)!important;line-height:1.45;margin-bottom:.55rem}}
+[data-testid="stAlert"] *{{color:var(--tx)!important;line-height:1.5}}
+[data-testid="stAlert"] svg{{color:var(--gold)!important;fill:var(--gold)!important}}
 [data-testid="stFileUploaderDropzone"]{{
- min-height:112px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;
- gap:1rem!important;padding:1rem 1.15rem!important;background:var(--panel)!important;
+ min-height:112px!important;padding:1rem 1.15rem!important;background:var(--panel)!important;
  border:1px dashed var(--line)!important;border-radius:16px!important
 }}
 [data-testid="stFileUploaderDropzoneInstructions"]{{
- display:flex!important;flex-direction:column!important;gap:.3rem!important;min-width:0;
- color:var(--tx)!important;line-height:1.5!important;white-space:normal!important
+ min-width:0;color:var(--tx)!important;line-height:1.5!important;white-space:normal!important
 }}
 [data-testid="stFileUploaderDropzoneInstructions"] *{{
  color:var(--tx)!important;line-height:1.5!important;white-space:normal!important;
@@ -86,7 +84,7 @@ st.markdown(
  display:flex!important;align-items:center!important;gap:.7rem!important;min-height:3rem;padding:.8rem 1rem!important;
  color:var(--tx)!important;line-height:1.45!important;white-space:normal!important
 }}
-[data-testid="stExpander"] summary p,[data-testid="stExpander"] summary span{{
+[data-testid="stExpander"] summary *{{
  margin:0!important;color:var(--tx)!important;line-height:1.45!important;
  white-space:normal!important;overflow-wrap:anywhere!important
 }}
@@ -108,8 +106,7 @@ st.markdown(
 .gx-data-table tbody tr:nth-child(even){{background:color-mix(in srgb,var(--panel-alt) 42%,transparent)}}
 .gx-theme-switch{{display:flex;justify-content:flex-end;margin-bottom:.3rem}}
 @media(max-width:640px){{
- [data-testid="stFileUploaderDropzone"]{{align-items:flex-start!important;flex-direction:column!important;min-height:0!important}}
- [data-testid="stFileUploaderDropzoneInstructions"]{{width:100%}}
+ [data-testid="stFileUploaderDropzone"]{{min-height:0!important;padding:.85rem!important}}
  [data-testid="stExpander"] summary{{align-items:flex-start!important}}
  .gx-data-table{{font-size:.82rem}}.gx-data-table td,.gx-data-table th{{padding:.5rem .6rem}}
 }}
@@ -139,10 +136,12 @@ kembali di Kalkulator untuk memulihkan data dan menghitung ulang hasilnya.
 )
 
 with st.container(key="saved_file_upload"):
+    st.markdown("**Unggah satu atau beberapa file data (.json)**")
     uploaded_files = st.file_uploader(
-        "Unggah satu atau beberapa file data (.json)",
+        "Pilih file JSON",
         type=["json"],
         accept_multiple_files=True,
+        label_visibility="collapsed",
     )
 
 
