@@ -72,7 +72,7 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 <label>Jumlah fraksi<select id="nf"><option>2</option><option>3</option><option>4</option></select></label>
 </div>
 <div class="w"><table id="in"><thead id="ih"></thead><tbody id="ib"></tbody></table></div>
-<div class="bt"><button class="o" id="ar">Tambah ayakan</button><button class="o" id="ex">Muat contoh</button></div>
+<div class="bt"><button class="o" id="ar">Tambah ayakan</button><button class="o" id="ex">Muat contoh</button><button class="o" id="saveFile">Simpan data (.json)</button><button class="o" id="loadFile">Muat data (.json)</button><input type="file" id="fileInput" accept=".json,application/json" hidden></div>
 <p class="h">Isi % lolos tiap fraksi (A paling kasar). Batas spesifikasi mengacu pada Spesifikasi Umum Bina Marga 2018 dan bisa diedit; cocokkan dengan soal atau spesifikasi yang Anda pakai.</p>
 <p class="er" id="err" role="alert"></p>
 </section>
@@ -649,6 +649,46 @@ $("sp").onchange=()=>{
  persist();renderIn();refresh();
 };
 $("ex").onclick=()=>{S=sample();persist();init();$("go").click()};
+$("saveFile").onclick=()=>{
+ const data=JSON.stringify(S,null,2),blob=new Blob([data],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=`gradasi-${new Date().toISOString().slice(0,10)}.json`;
+ document.body.append(a);a.click();a.remove();
+ window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+};
+$("loadFile").onclick=()=>$("fileInput").click();
+$("fileInput").onchange=async e=>{
+ const file=e.target.files[0];
+ if(!file)return;
+ try{
+  const j=JSON.parse(await file.text());
+  const record=v=>v&&typeof v==="object"&&!Array.isArray(v);
+  const value=v=>typeof v==="string"||typeof v==="number";
+  if(!record(j)||!Array.isArray(j.rows)||!j.rows.every(r=>record(r)&&Array.isArray(r.f)&&r.f.every(value)))throw new Error("Format baris ayakan tidak valid.");
+  if(typeof j.sp!=="string")throw new Error("Spesifikasi gradasi tidak valid.");
+  const n=Number(j.n);
+  if(![2,3,4].includes(n)||!Array.isArray(j.p)||j.p.length<n||!j.p.every(value))throw new Error("Jumlah fraksi atau proporsi tidak valid.");
+  if(j.rows.some(r=>!["d","mn","mx"].every(k=>value(r[k]))))throw new Error("Ukuran ayakan dan batas min/maks harus berupa teks atau angka.");
+  const state={...j,n,p:j.p.map(String),rows:j.rows.map(r=>({...r,d:String(r.d),mn:String(r.mn),mx:String(r.mx),f:r.f.slice(0,4).map(String).concat(Array(Math.max(0,4-r.f.length)).fill(""))}))};
+  if(j.jm!==undefined){
+   if(!record(j.jm)||!Object.values(j.jm).every(value))throw new Error("Pengaturan JMF tidak valid.");
+   state.jm={...JD,...j.jm};
+  }
+  if(j.mz!==undefined){
+   if(!record(j.mz)||!Array.isArray(j.mz.rows)||!j.mz.rows.every(r=>record(r)&&Object.values(r).every(value)))throw new Error("Data Marshall tidak valid.");
+   if(j.mz.sp!==undefined&&typeof j.mz.sp!=="string")throw new Error("Spesifikasi Marshall tidak valid.");
+   if(j.mz.g!==undefined&&(!record(j.mz.g)||!Object.values(j.mz.g).every(value)))throw new Error("Parameter Marshall tidak valid.");
+   if(j.mz.lim!==undefined&&(!record(j.mz.lim)||!Object.values(j.mz.lim).every(value)))throw new Error("Batas spesifikasi Marshall tidak valid.");
+   const base={sp:"AC-WC",lim:limOf("AC-WC"),g:{gsb:"",gse:"",gb:"1.03",pg:"1"},rows:[]};
+   state.mz={...base,...j.mz,g:{...base.g,...j.mz.g},lim:{...base.lim,...j.mz.lim}};
+  }
+  S=state;persist();init();$("go").click();
+ }catch(err){
+  alert("File tidak bisa dibaca: "+(err&&err.message?err.message:"format tidak valid."));
+ }finally{
+  e.target.value="";
+ }
+};
 $("go").onclick=()=>{
  const {rows,errs}=data();
  if(errs.length){refresh();return}

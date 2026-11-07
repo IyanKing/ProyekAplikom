@@ -18,6 +18,7 @@ st.logo(str(Path(__file__).parent / "logo.svg"), size="large")
 halaman = [
     st.Page("beranda.py", title="Beranda", default=True),
     st.Page("kalkulator.py", title="Kalkulator", url_path="kalkulator"),
+    st.Page("data_tersimpan.py", title="Data Tersimpan", url_path="data-tersimpan"),
     st.Page("cara_kerja.py", title="Cara Kerja", url_path="cara-kerja"),
     st.Page("tentang.py", title="Tentang", url_path="tentang"),
 ]
