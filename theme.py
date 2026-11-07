@@ -29,7 +29,7 @@ radial-gradient(700px 420px at -8% 38%,rgba(201,138,58,.08),transparent 60%),var
 html,body,[class*="st-"],.stApp{font-family:'Hanken Grotesk',system-ui,sans-serif}
 [data-testid="stHeader"]{background:rgba(27,24,21,.84);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 #MainMenu,footer{visibility:hidden}
-.block-container{max-width:1180px;padding-top:2.4rem;padding-bottom:4.5rem}
+.block-container{max-width:1180px;padding-top:5rem;padding-bottom:4.5rem}
 @keyframes gx-page-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:no-preference){
  [data-testid="stMainBlockContainer"],.main .block-container{
@@ -98,7 +98,11 @@ box-shadow:0 12px 30px -12px rgba(233,184,115,.7)}
 .st-key-band{border:1px solid var(--line);border-radius:30px;padding:1.6rem 2rem;margin-top:3.4rem;
 background:linear-gradient(110deg,#33261b,#221a13)}
 .st-key-calc iframe{border:1px solid var(--line);border-radius:20px;background:#1b1815}
-@media(max-width:640px){.gx-sieve{border-radius:22px 80px 80px 22px}.st-key-band{padding:1.2rem 1.2rem}}
+@media(max-width:640px){
+ .block-container{padding-top:4.5rem;padding-bottom:3.5rem}
+ .gx-sieve{border-radius:22px 80px 80px 22px}
+ .st-key-band{padding:1.2rem 1.2rem}
+}
 """.replace("%FONTS%", FONTS)
 
 # ----------------------------------------------------------------- data gradasi
