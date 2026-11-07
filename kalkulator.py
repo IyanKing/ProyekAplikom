@@ -13,7 +13,7 @@ ui.html(theme.page_head(
     "Alat hitung",
 ))
 
-BERKAS = Path(__file__).resolve().parents[1] / "gradasi.html"
+BERKAS = Path(__file__).resolve().parent / "gradasi.html"
 
 if not BERKAS.is_file():
     st.error(f"Berkas kalkulator tidak ditemukan: `{BERKAS}`")
