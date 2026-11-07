@@ -9,6 +9,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+from docx import Document
+from docx.enum.section import WD_ORIENT
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4, landscape
@@ -142,7 +149,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 ui.html(theme.page_head(
-    "Laporan PDF",
+    "Laporan PDF atau Word",
     "Susun laporan gradasi, rancangan campuran, dan hasil Marshall dari data JSON.",
     "Dokumen laporan",
 ))
@@ -795,6 +802,295 @@ def build_pdf(state, gradation, jmf, marshall, kao_info, metadata):
     return output
 
 
+def _docx_cell_shading(cell, fill):
+    properties = cell._tc.get_or_add_tcPr()
+    shading = OxmlElement("w:shd")
+    shading.set(qn("w:fill"), fill)
+    properties.append(shading)
+
+
+def _docx_table(document, rows):
+    table = document.add_table(rows=1, cols=len(rows[0]))
+    table.style = "Table Grid"
+    table.autofit = True
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    for row_index, values in enumerate(rows):
+        cells = table.rows[0].cells if row_index == 0 else table.add_row().cells
+        for cell, value in zip(cells, values):
+            cell.text = str(value)
+            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+            for paragraph in cell.paragraphs:
+                paragraph.paragraph_format.space_after = Pt(0)
+                for run in paragraph.runs:
+                    run.font.name = "Arial"
+                    run.font.size = Pt(8)
+                    if row_index == 0:
+                        run.bold = True
+                        run.font.color.rgb = RGBColor(255, 255, 255)
+                        _docx_cell_shading(cell, "0E6B78")
+        if row_index == 0:
+            row_properties = table.rows[0]._tr.get_or_add_trPr()
+            repeat = OxmlElement("w:tblHeader")
+            repeat.set(qn("w:val"), "true")
+            row_properties.append(repeat)
+    document.add_paragraph().paragraph_format.space_after = Pt(2)
+    return table
+
+
+def _docx_heading(document, title, level=1):
+    heading = document.add_heading(title, level=level)
+    heading.paragraph_format.keep_with_next = True
+    return heading
+
+
+def _docx_add_chart(document, chart, caption=None, width=Cm(23)):
+    if not chart:
+        return
+    paragraph = document.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.add_run().add_picture(chart, width=width)
+    if caption:
+        caption_paragraph = document.add_paragraph(caption)
+        caption_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for run in caption_paragraph.runs:
+            run.italic = True
+            run.font.size = Pt(8)
+
+
+def _docx_page_number(paragraph):
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = paragraph.add_run("Halaman ")
+    field = OxmlElement("w:fldSimple")
+    field.set(qn("w:instr"), "PAGE")
+    run._r.addnext(field)
+
+
+def build_docx(state, gradation, jmf, marshall, kao_info, metadata):
+    document = Document()
+    section = document.sections[0]
+    section.orientation = WD_ORIENT.LANDSCAPE
+    section.page_width = Cm(29.7)
+    section.page_height = Cm(21)
+    section.top_margin = Cm(1.7)
+    section.bottom_margin = Cm(1.6)
+    section.left_margin = Cm(1.7)
+    section.right_margin = Cm(1.7)
+
+    normal = document.styles["Normal"]
+    normal.font.name = "Arial"
+    normal.font.size = Pt(9)
+    normal.paragraph_format.space_after = Pt(5)
+    for style_name in ("Heading 1", "Heading 2"):
+        style = document.styles[style_name]
+        style.font.name = "Arial"
+        style.font.color.rgb = RGBColor(14, 107, 120)
+
+    header = section.header.paragraphs[0]
+    header.text = "Laporan Perancangan Campuran Aspal"
+    header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    for run in header.runs:
+        run.font.size = Pt(8)
+        run.font.color.rgb = RGBColor(90, 103, 114)
+    _docx_page_number(section.footer.paragraphs[0])
+
+    title = document.add_heading("Laporan Perancangan Campuran Aspal", level=0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_run = title.runs[0]
+    title_run.font.name = "Arial"
+    title_run.font.color.rgb = RGBColor(14, 107, 120)
+
+    details = [
+        f"Spesifikasi: {state.get('sp', '—')}",
+        f"Fraksi: {gradation['n']}",
+        f"Tanggal: {datetime.now().day} {MONTHS[datetime.now().month - 1]} {datetime.now().year}",
+    ]
+    for key, label in (("project", "Proyek"), ("location", "Lokasi"), ("author", "Disusun oleh")):
+        if metadata.get(key):
+            details.append(f"{label}: {metadata[key]}")
+    detail_paragraph = document.add_paragraph("  |  ".join(details))
+    detail_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    failed = [row for row in gradation["rows"] if not row["ok"]]
+    _docx_heading(document, "1. Ringkasan Eksekutif")
+    status_text = "MEMENUHI spesifikasi" if not failed else f"TIDAK MEMENUHI ({len(failed)} ayakan)"
+    summary = (
+        f"Gradasi gabungan {status_text}. Proporsi campuran: "
+        + ", ".join(
+            f"Fraksi {chr(65 + index)} = {_format(value)}%"
+            for index, value in enumerate(gradation["p"])
+        )
+        + "."
+    )
+    if jmf:
+        summary += (
+            f" Pb hasil rumus = {_format(jmf['pb'])}% "
+            f"(pembulatan 0,5%: {_format(round(jmf['pb'] * 2) / 2)}%)."
+        )
+    if kao_info and kao_info.get("kao") is not None:
+        summary += f" Kadar aspal optimum (KAO) = {_format(kao_info['kao'])}%."
+    document.add_paragraph(summary)
+
+    _docx_heading(document, "2. Data Gradasi Input")
+    input_rows = [[
+        "Ayakan (mm)", "Min (%)", "Maks (%)",
+        *[f"Lolos {chr(65 + index)} (%)" for index in range(gradation["n"])],
+    ]]
+    for row in gradation["rows"]:
+        input_rows.append([
+            _format(row["d"], 3), _format(row["mn"]), _format(row["mx"]),
+            *[_format(value) for value in row["f"]],
+        ])
+    _docx_table(document, input_rows)
+
+    _docx_heading(document, "3. Gradasi Gabungan dan Evaluasi")
+    blend_rows = [[
+        "Ayakan (mm)", "Min (%)", "Maks (%)", "Gabungan (%)",
+        "Tertahan (%)", "Kum. tertahan (%)", "Evaluasi",
+    ]]
+    previous = 100.0
+    for row in gradation["rows"]:
+        passing = row["P"]
+        retained = previous - passing if passing is not None else None
+        previous = passing if passing is not None else previous
+        evaluation = "Memenuhi" if row["ok"] else "Data fraksi belum lengkap" if passing is None else (
+            "Di bawah min" if row["mn"] is not None and passing < row["mn"] else "Di atas maks"
+        )
+        blend_rows.append([
+            _format(row["d"], 3), _format(row["mn"]), _format(row["mx"]),
+            _format(passing), _format(retained),
+            _format(100 - passing if passing is not None else None), evaluation,
+        ])
+    blend_rows.append(["Pan", "—", "—", "—", _format(previous), "100,00", "—"])
+    _docx_table(document, blend_rows)
+    _docx_add_chart(
+        document,
+        chart_gradation(gradation),
+        "Gambar 1. Kurva gradasi tiap fraksi, campuran, dan rentang spesifikasi.",
+    )
+
+    if jmf:
+        _docx_heading(document, "4. Rancangan Campuran (JMF)")
+        document.add_paragraph(
+            f"Kelompok {jmf['kg']}; kadar aspal {_format(jmf['ka'])}%; "
+            f"berat total benda uji {_format(jmf['bt'], 1)} g; "
+            f"berat aspal {_format(jmf['aspal'], 1)} g; "
+            f"berat agregat {_format(jmf['ag'], 1)} g. Komposisi target: "
+            f"CA {_format(jmf['ca'])}%, FA {_format(jmf['fa'])}%, "
+            f"filler {_format(jmf['pan'])}%. Target: "
+            f"{'campuran fraksi' if jmf['tg'] == 'blend' else 'nilai tengah spesifikasi'}."
+        )
+        jmf_rows = [[
+            "Ayakan (mm)", "Target (% lolos)", "Tertahan (%)",
+            *[f"Berat agregat K{group['group']} (g)" for group in jmf["groups"]],
+        ]]
+        for row in jmf["T"]:
+            jmf_rows.append([
+                _format(row["d"], 3), _format(row["P"]), _format(row["t"]),
+                *[_format(row["t"] * group["aggregate"] / 100, 1) for group in jmf["groups"]],
+            ])
+        jmf_rows.append([
+            "Pan", "0,00", _format(jmf["pan"]),
+            *[_format(jmf["pan"] * group["aggregate"] / 100, 1) for group in jmf["groups"]],
+        ])
+        _docx_table(document, jmf_rows)
+        group_rows = [["Kelompok", "Kadar aspal (%)", "Berat aspal (g)", "Berat agregat (g)"]]
+        for group in jmf["groups"]:
+            group_rows.append([
+                f"Kelompok {group['group']}", _format(group["ka"]),
+                _format(group["asphalt"], 1), _format(group["aggregate"], 1),
+            ])
+        _docx_table(document, group_rows)
+
+    if marshall:
+        document.add_page_break()
+        _docx_heading(document, "5. Analisis Uji Marshall")
+        labels = [
+            ("vim", "VIM", "%"), ("vma", "VMA", "%"), ("vfa", "VFA", "%"),
+            ("st", "Stabilitas", "kg"), ("fl", "Flow", "mm"), ("mq", "MQ", "kg/mm"),
+        ]
+        limit_rows = [["Parameter", "Batas minimum", "Batas maksimum", "Satuan"]]
+        for metric, label, unit in labels:
+            minimum, maximum = marshall["lims"][metric]
+            if minimum is not None or maximum is not None:
+                limit_rows.append([
+                    label, f">= {_format(minimum)}" if minimum is not None else "—",
+                    f"<= {_format(maximum)}" if maximum is not None else "—", unit,
+                ])
+        _docx_table(document, limit_rows)
+
+        sample_rows = [[
+            "KA (%)", "Berat kering (g)", "Berat SSD (g)", "Berat dalam air (g)",
+            "Stabilitas (baca)", "Flow (mm)",
+        ]]
+        for sample in marshall["samples"]:
+            sample_rows.append([
+                _format(sample["ka"]), _format(sample["a"], 1), _format(sample["b"], 1),
+                _format(sample["c"], 1), _format(sample["st"], 2), _format(sample["fl"]),
+            ])
+        _docx_heading(document, "Data benda uji", level=2)
+        _docx_table(document, sample_rows)
+
+        result_rows = [[
+            "KA (%)", "n", "Gmb", "VIM (%)", "VMA (%)", "VFA (%)",
+            "Stabilitas (kg)", "Flow (mm)", "MQ (kg/mm)",
+        ]]
+        for row in marshall["A"]:
+            result_rows.append([
+                _format(row["ka"]), str(row["n"]), _format(row["gmb"], 3),
+                _format(row["vim"]), _format(row["vma"]), _format(row["vfa"]),
+                _format(row["st"]), _format(row["fl"]), _format(row["mq"]),
+            ])
+        _docx_heading(document, "Rata-rata hasil per kadar aspal", level=2)
+        _docx_table(document, result_rows)
+        if kao_info and kao_info.get("kao") is not None:
+            first, last = kao_info["range"]
+            document.add_paragraph(
+                f"KAO = {_format(kao_info['kao'])}%, titik tengah rentang "
+                f"{_format(first)}–{_format(last)}% yang memenuhi batas terpasang."
+            )
+        if len(marshall["A"]) > 1:
+            _docx_heading(document, "Grafik Parameter Marshall", level=2)
+            for metric, label, unit in labels:
+                _docx_add_chart(
+                    document,
+                    chart_marshall(metric, label, unit, marshall, kao_info),
+                    f"{label} ({unit})",
+                    width=Cm(11),
+                )
+
+    _docx_heading(document, "6. Kesimpulan")
+    conclusions = []
+    if failed:
+        conclusions.append(
+            "Gradasi gabungan tidak memenuhi seluruh batas pada ayakan: "
+            + ", ".join(f"{_format(row['d'], 3)} mm" for row in failed) + "."
+        )
+    else:
+        conclusions.append("Gradasi gabungan memenuhi seluruh batas spesifikasi yang tersedia.")
+    if jmf:
+        conclusions.append(
+            f"Pb hasil rumus adalah {_format(jmf['pb'])}% "
+            f"(pembulatan 0,5%: {_format(round(jmf['pb'] * 2) / 2)}%)."
+        )
+    if kao_info and kao_info.get("kao") is not None:
+        conclusions.append(f"KAO hasil evaluasi adalah {_format(kao_info['kao'])}%.")
+    for sentence in conclusions:
+        document.add_paragraph(sentence, style="List Bullet")
+    note = document.add_paragraph(
+        "Catatan: laporan dihitung ulang dari data JSON yang diunggah. "
+        "Hasil bergantung pada ketepatan data laboratorium dan batas spesifikasi; "
+        "verifikasi kembali sebelum digunakan sebagai dokumen teknis."
+    )
+    for run in note.runs:
+        run.italic = True
+        run.font.size = Pt(8)
+
+    output = BytesIO()
+    document.save(output)
+    output.seek(0)
+    return output
+
+
 selected_state = None
 source_name = ""
 report_source = st.radio(
@@ -868,16 +1164,32 @@ if selected_state is not None:
         with location_column:
             location = st.text_input("Lokasi (opsional)", key="pdf_location")
         metadata = {"project": project.strip(), "author": author.strip(), "location": location.strip()}
-        pdf = build_pdf(selected_state, gradation, jmf, marshall, kao_info, metadata)
+        report_format = st.radio(
+            "Format laporan",
+            ["PDF", "Word (.docx)"],
+            horizontal=True,
+            key="report_format",
+        )
+        if report_format == "PDF":
+            report = build_pdf(selected_state, gradation, jmf, marshall, kao_info, metadata)
+            extension = "pdf"
+            mime_type = "application/pdf"
+        else:
+            report = build_docx(selected_state, gradation, jmf, marshall, kao_info, metadata)
+            extension = "docx"
+            mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         file_stem = "".join(char.lower() if char.isalnum() else "-" for char in source_name).strip("-")
-        filename = f"laporan-{file_stem or 'gradasi'}-{datetime.now().strftime('%Y%m%d-%H%M')}.pdf"
+        filename = (
+            f"laporan-{file_stem or 'gradasi'}-"
+            f"{datetime.now().strftime('%Y%m%d-%H%M')}.{extension}"
+        )
         st.download_button(
-            "Unduh laporan PDF",
-            data=pdf.getvalue(),
+            f"Unduh laporan {report_format}",
+            data=report.getvalue(),
             file_name=filename,
-            mime="application/pdf",
+            mime=mime_type,
             type="primary",
-            key="download_report_pdf",
+            key="download_report",
         )
     except (ValueError, TypeError, KeyError, ZeroDivisionError, OverflowError) as error:
         st.error(f"Data tidak bisa diproses untuk laporan: {error}")
