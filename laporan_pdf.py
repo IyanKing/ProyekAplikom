@@ -40,6 +40,107 @@ MONTHS = (
 )
 
 ui.inject()
+st.markdown(
+    """
+<style>
+:root{color-scheme:dark}
+.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"]{
+ background:radial-gradient(900px 480px at 88% -6%,rgba(201,138,58,.15),transparent 62%),#1b1815;
+ color:#f1e8dc
+}
+[data-testid="stHeader"]{background:rgba(27,24,21,.92);border-bottom:1px solid rgba(233,184,115,.28)}
+[data-testid="stMarkdownContainer"],[data-testid="stMarkdownContainer"] p,
+[data-testid="stCaptionContainer"],[data-testid="stWidgetLabel"],
+[data-testid="stMarkdownContainer"] li{color:#f1e8dc}
+[data-testid="stMarkdownContainer"] h1,[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,[data-testid="stMarkdownContainer"] h4{
+ color:#ecc994;line-height:1.35;overflow:visible;overflow-wrap:anywhere
+}
+[data-testid="stMarkdownContainer"] h1{margin-top:.25rem;margin-bottom:.75rem}
+[data-testid="stMarkdownContainer"] h2,[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4{margin-top:1.1rem;margin-bottom:.6rem}
+[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] *{color:#d2c3ad!important}
+[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] span{
+ color:#f1e8dc!important;line-height:1.45;white-space:normal;overflow-wrap:anywhere
+}
+[data-testid="stRadio"] [role="radiogroup"]{gap:.65rem}
+[data-testid="stRadio"] label,[data-testid="stRadio"] label *{
+ color:#f1e8dc!important;line-height:1.45;white-space:normal;overflow-wrap:anywhere
+}
+[data-testid="stRadio"] label{
+ min-height:2.6rem;padding:.45rem .8rem;border:1px solid rgba(233,184,115,.28);
+ border-radius:999px;background:#251d16
+}
+[data-testid="stRadio"] label:has(input:checked){border-color:#e9b873;background:#33271c}
+[data-testid="stFileUploaderDropzone"]{
+ min-height:100px;padding:1rem;background:#251d16!important;
+ border:1px dashed rgba(233,184,115,.42)!important;border-radius:16px
+}
+[data-testid="stFileUploaderDropzoneInstructions"],
+[data-testid="stFileUploaderDropzoneInstructions"] *{
+ color:#f1e8dc!important;line-height:1.5!important;white-space:normal!important;
+ overflow-wrap:anywhere!important
+}
+[data-testid="stFileUploader"] label{color:#f1e8dc!important;line-height:1.45}
+[data-testid="stFileUploader"] small{color:#d2c3ad!important}
+[data-testid="stAlert"]{
+ background:#251d16!important;color:#f1e8dc!important;border:1px solid rgba(233,184,115,.28)
+}
+[data-testid="stAlert"] *{color:#f1e8dc!important;line-height:1.5}
+[data-testid="stAlert"] svg{color:#e9b873!important;fill:#e9b873!important}
+[data-testid="stExpander"]{
+ background:#251d16;border:1px solid rgba(233,184,115,.28);border-radius:16px;overflow:hidden
+}
+[data-testid="stExpander"] summary{
+ min-height:3rem;padding:.8rem 1rem;color:#f1e8dc!important;
+ line-height:1.45;white-space:normal
+}
+[data-testid="stExpander"] summary *{
+ color:#f1e8dc!important;line-height:1.45!important;white-space:normal!important;
+ overflow-wrap:anywhere!important
+}
+[data-testid="stExpander"] summary svg{color:#e9b873!important;flex:0 0 auto}
+[data-testid="stExpander"] [data-testid="stExpanderDetails"]{padding:.35rem 1rem 1rem}
+[data-testid="stMetric"]{
+ min-width:0;height:100%;padding:1rem;background:#251d16;
+ border:1px solid rgba(233,184,115,.28);border-radius:14px
+}
+[data-testid="stMetricLabel"],[data-testid="stMetricLabel"] *,
+[data-testid="stMetricValue"],[data-testid="stMetricValue"] *{
+ color:#f1e8dc!important;white-space:normal!important;overflow-wrap:anywhere
+}
+[data-testid="stMetricLabel"]{line-height:1.4}
+[data-testid="stTextInput"] input{
+ min-height:2.75rem;background:#251d16;color:#f1e8dc;border:1px solid rgba(233,184,115,.35)
+}
+[data-testid="stTextInput"] input::placeholder{color:#b8a995}
+[data-testid="stButton"] button,[data-testid="stDownloadButton"] button,
+[data-testid="stFileUploader"] button{
+ min-height:2.65rem;padding:.55rem 1rem;background:#2f241b;color:#f1e8dc;
+ border:1px solid rgba(233,184,115,.4);border-radius:999px;line-height:1.4;
+ white-space:normal
+}
+[data-testid="stButton"] button:hover,[data-testid="stDownloadButton"] button:hover,
+[data-testid="stFileUploader"] button:hover{border-color:#e9b873;color:#e9b873}
+[data-testid="stDataFrame"]{border:1px solid rgba(233,184,115,.28);border-radius:12px}
+.gx-report-table-wrap{width:100%;overflow-x:auto;margin:.4rem 0 1rem;
+ border:1px solid rgba(233,184,115,.28);border-radius:12px}
+.gx-report-table{width:100%;border-collapse:collapse;color:#f1e8dc;font-size:.92rem}
+.gx-report-table th{padding:.65rem .8rem;background:#2f241b;color:#e9b873;
+ text-align:left;white-space:nowrap;border-bottom:1px solid rgba(233,184,115,.28)}
+.gx-report-table td{padding:.62rem .8rem;color:#f1e8dc;border-bottom:1px solid rgba(233,184,115,.18)}
+.gx-report-table tbody tr:nth-child(even){background:rgba(233,184,115,.055)}
+.gx-report-table tbody tr:last-child td{border-bottom:0}
+@media(max-width:700px){
+ [data-testid="stRadio"] [role="radiogroup"]{flex-wrap:wrap}
+ [data-testid="stMetric"]{padding:.75rem}
+ .gx-report-table{font-size:.82rem}
+ .gx-report-table th,.gx-report-table td{padding:.5rem .6rem}
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 ui.html(theme.page_head(
     "Laporan PDF",
     "Susun laporan gradasi, rancangan campuran, dan hasil Marshall dari data JSON.",
@@ -748,7 +849,16 @@ if selected_state is not None:
                 }
                 for row in gradation["rows"]
             ])
-            st.dataframe(preview, width="stretch", hide_index=True)
+            headers = "".join(f"<th>{escape(str(column))}</th>" for column in preview.columns)
+            body = "".join(
+                "<tr>" + "".join(f"<td>{escape(str(value))}</td>" for value in row) + "</tr>"
+                for row in preview.itertuples(index=False, name=None)
+            )
+            ui.html(
+                '<div class="gx-report-table-wrap"><table class="gx-report-table">'
+                f"<thead><tr>{headers}</tr></thead><tbody>{body}</tbody>"
+                "</table></div>"
+            )
 
         project_column, author_column, location_column = st.columns(3)
         with project_column:
