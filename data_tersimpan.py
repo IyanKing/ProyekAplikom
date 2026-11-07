@@ -51,20 +51,55 @@ st.markdown(
 .stApp{{background:radial-gradient(900px 480px at 88% -6%,rgba(201,138,58,.15),transparent 62%),var(--bg)}}
 [data-testid="stAppViewContainer"]{{background:transparent}}
 [data-testid="stHeader"]{{background:{colors["header"]};backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}}
-.stApp,[data-testid="stMarkdownContainer"],[data-testid="stCaptionContainer"]{{color:var(--tx)}}
-[data-testid="stMarkdownContainer"] h2,[data-testid="stMarkdownContainer"] h3,[data-testid="stMarkdownContainer"] h4{{color:var(--tan)}}
-[data-testid="stAlert"]{{background:var(--panel);color:var(--tx);border:1px solid var(--line)}}
-[data-testid="stFileUploader"] section{{background:var(--panel);border:1px dashed var(--line);border-radius:16px}}
-[data-testid="stFileUploader"] section,[data-testid="stFileUploader"] small,[data-testid="stFileUploader"] span{{color:var(--tx)}}
+.stApp,[data-testid="stMarkdownContainer"],[data-testid="stCaptionContainer"],[data-testid="stWidgetLabel"]{{color:var(--tx)}}
+[data-testid="stMarkdownContainer"] h1,[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,[data-testid="stMarkdownContainer"] h4,
+[data-testid="stSubheader"]{{color:var(--tan)!important;line-height:1.35!important;overflow-wrap:anywhere}}
+[data-testid="stMarkdownContainer"] h2,[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4{{margin-top:1.15rem!important;margin-bottom:.65rem!important}}
+[data-testid="stAlert"]{{background:var(--panel)!important;color:var(--tx)!important;border:1px solid var(--line)}}
+[data-testid="stAlert"] p,[data-testid="stAlert"] span{{color:var(--tx)!important;line-height:1.5}}
+[data-testid="stFileUploader"] label{{color:var(--tx)!important;line-height:1.45;margin-bottom:.55rem}}
+[data-testid="stFileUploaderDropzone"]{{
+ min-height:112px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;
+ gap:1rem!important;padding:1rem 1.15rem!important;background:var(--panel)!important;
+ border:1px dashed var(--line)!important;border-radius:16px!important
+}}
+[data-testid="stFileUploaderDropzoneInstructions"]{{
+ display:flex!important;flex-direction:column!important;gap:.3rem!important;min-width:0;
+ color:var(--tx)!important;line-height:1.5!important;white-space:normal!important
+}}
+[data-testid="stFileUploaderDropzoneInstructions"] *{{
+ color:var(--tx)!important;line-height:1.5!important;white-space:normal!important;
+ overflow-wrap:anywhere!important
+}}
+[data-testid="stFileUploader"] small,[data-testid="stFileUploader"] span{{color:var(--mu)}}
 [data-testid="stFileUploader"] button,[data-testid="stDownloadButton"] button,[data-testid="stButton"] button{{
- background:var(--panel2);color:var(--tx);border:1px solid var(--line);border-radius:999px
+ min-height:2.5rem;background:var(--panel2);color:var(--tx);border:1px solid var(--line);border-radius:999px;
+ line-height:1.35;white-space:normal
 }}
 [data-testid="stFileUploader"] button:hover,[data-testid="stDownloadButton"] button:hover,[data-testid="stButton"] button:hover{{
  border-color:var(--gold);color:var(--gold)
 }}
-[data-testid="stExpander"]{{background:var(--panel);border:1px solid var(--line);border-radius:16px}}
+[data-testid="stExpander"]{{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}}
+[data-testid="stExpander"] summary{{
+ display:flex!important;align-items:center!important;gap:.7rem!important;min-height:3rem;padding:.8rem 1rem!important;
+ color:var(--tx)!important;line-height:1.45!important;white-space:normal!important
+}}
+[data-testid="stExpander"] summary p,[data-testid="stExpander"] summary span{{
+ margin:0!important;color:var(--tx)!important;line-height:1.45!important;
+ white-space:normal!important;overflow-wrap:anywhere!important
+}}
+[data-testid="stExpander"] summary svg{{flex:0 0 auto;color:var(--gold)!important}}
+[data-testid="stExpander"] [data-testid="stExpanderDetails"]{{padding:.5rem 1rem 1rem}}
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] h3{{font-size:1.15rem!important}}
 [data-testid="stMetric"]{{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}}
 [data-testid="stMetricLabel"],[data-testid="stMetricValue"],[data-testid="stMetricDelta"]{{color:var(--tx)}}
+.gx-empty-state{{display:flex;align-items:flex-start;gap:.75rem;margin:.5rem 0 1rem;padding:1rem 1.1rem;
+ background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;
+ color:var(--tx);line-height:1.55}}
+.gx-empty-state p{{margin:0;color:var(--tx)}}
+.gx-empty-state .gx-empty-icon{{color:var(--gold);font-size:1.2rem;line-height:1.2}}
 .gx-data-table-wrap{{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:.35rem 0 1rem}}
 .gx-data-table{{width:100%;border-collapse:collapse;color:var(--tx);font-size:.92rem}}
 .gx-data-table th{{background:var(--panel2);color:var(--gold);font-weight:600;text-align:left;white-space:nowrap}}
@@ -72,7 +107,12 @@ st.markdown(
 .gx-data-table tr:last-child td{{border-bottom:0}}
 .gx-data-table tbody tr:nth-child(even){{background:color-mix(in srgb,var(--panel-alt) 42%,transparent)}}
 .gx-theme-switch{{display:flex;justify-content:flex-end;margin-bottom:.3rem}}
-@media(max-width:640px){{.gx-data-table{{font-size:.82rem}}.gx-data-table td,.gx-data-table th{{padding:.5rem .6rem}}}}
+@media(max-width:640px){{
+ [data-testid="stFileUploaderDropzone"]{{align-items:flex-start!important;flex-direction:column!important;min-height:0!important}}
+ [data-testid="stFileUploaderDropzoneInstructions"]{{width:100%}}
+ [data-testid="stExpander"] summary{{align-items:flex-start!important}}
+ .gx-data-table{{font-size:.82rem}}.gx-data-table td,.gx-data-table th{{padding:.5rem .6rem}}
+}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -98,11 +138,12 @@ kembali di Kalkulator untuk memulihkan data dan menghitung ulang hasilnya.
 """
 )
 
-uploaded_files = st.file_uploader(
-    "Unggah satu atau beberapa file data (.json)",
-    type=["json"],
-    accept_multiple_files=True,
-)
+with st.container(key="saved_file_upload"):
+    uploaded_files = st.file_uploader(
+        "Unggah satu atau beberapa file data (.json)",
+        type=["json"],
+        accept_multiple_files=True,
+    )
 
 
 def _show_table(frame):
@@ -478,7 +519,7 @@ if parsed:
             cols[2].metric("Ayakan", len(data["rows"]))
 
             if data["rows"]:
-                st.markdown("### Data gradasi")
+                st.subheader("Data gradasi")
                 gradation = _gradation_rows(data)
                 _show_table(pd.DataFrame(gradation))
                 count_value = data.get("n", 0)
@@ -531,7 +572,7 @@ if parsed:
 
             config = data.get("jm")
             if isinstance(config, dict):
-                st.markdown("### Pengaturan rancangan campuran (JMF)")
+                st.subheader("Pengaturan rancangan campuran (JMF)")
                 target_labels = {"mid": "Nilai tengah spesifikasi", "blend": "Campuran fraksi"}
                 setting_rows = [
                     ("Kelompok", f"Kelompok {config.get('kg', '2')}"),
@@ -564,7 +605,7 @@ if parsed:
 
             marshall = data.get("mz")
             if isinstance(marshall, dict):
-                st.markdown("### Data Marshall")
+                st.subheader("Data Marshall")
                 _show_marshall(marshall)
 
             st.download_button(
@@ -575,7 +616,11 @@ if parsed:
                 key=f"download_{index}",
             )
 else:
-    st.info("Belum ada file yang diunggah.")
+    ui.html(
+        '<div class="gx-empty-state"><span class="gx-empty-icon">ⓘ</span>'
+        "<p>Belum ada file yang diunggah. Pilih berkas JSON di atas untuk melihat "
+        "data gradasi, JMF, dan Marshall.</p></div>"
+    )
 
 st.divider()
 st.subheader("Template contoh")
