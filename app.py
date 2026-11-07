@@ -13,12 +13,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-st.logo(str(Path(__file__).parent / "assets" / "logo.svg"), size="large")
+st.logo(str(Path(__file__).parent / "logo.svg"), size="large")
 
 halaman = [
-    st.Page("views/beranda.py", title="Beranda", default=True),
-    st.Page("views/kalkulator.py", title="Kalkulator", url_path="kalkulator"),
-    st.Page("views/cara_kerja.py", title="Cara Kerja", url_path="cara-kerja"),
-    st.Page("views/tentang.py", title="Tentang", url_path="tentang"),
+    st.Page("beranda.py", title="Beranda", default=True),
+    st.Page("kalkulator.py", title="Kalkulator", url_path="kalkulator"),
+    st.Page("cara_kerja.py", title="Cara Kerja", url_path="cara-kerja"),
+    st.Page("tentang.py", title="Tentang", url_path="tentang"),
 ]
 st.navigation(halaman, position="top").run()

@@ -145,10 +145,10 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 </div>
 </section>
 <section class="c" id="ex2" hidden>
-<h2>Ekspor</h2>
-<p class="h" style="margin-top:0">Excel berisi sheet Gradasi (proporsi bisa diubah, hasil ikut menghitung) dan sheet JMF Kelompok 1 sampai 4 dengan rumus hidup. Grafik diunduh sebagai gambar untuk laporan.</p>
+<h2>Unduh hasil lengkap</h2>
+<p class="h" style="margin-top:0">Excel memuat hasil gradasi, empat sheet JMF, data benda uji, parameter, batas, dan ringkasan hasil Marshall. PNG menggabungkan grafik gradasi dan seluruh grafik Marshall yang tersedia.</p>
 <div class="bt"><button id="dx">Unduh Excel (.xlsx)</button><button class="o" id="dp">Unduh grafik (.png)</button></div>
-<p class="h" id="xs" role="status"></p>
+<p class="h" id="xs" role="status" aria-live="polite"></p>
 </section>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -339,6 +339,7 @@ const LIMS=[["vi1","VIM min (%)"],["vi2","VIM maks (%)"],["vma","VMA min (%)"],[
 const PRM=[["gsb","BJ bulk agregat (Gsb)"],["gse","BJ efektif agregat (Gse)"],["gb","BJ aspal (Gb)"],["pg","Pengali stabilitas"]];
 const limOf=k=>Object.fromEntries(Object.entries(MP[k]).map(([a,b])=>[a,String(b)]));
 const MZ=()=>S.mz||(S.mz={sp:"AC-WC",lim:limOf("AC-WC"),g:{gsb:"",gse:"",gb:"1.03",pg:"1"},rows:[]});
+let MZResult=null;
 function pfit(xs,ys){
  const p=xs.map((x,i)=>[x,ys[i]]).filter(q=>isFinite(q[1]));
  const d=Math.min(2,p.length-1);if(d<1)return null;
@@ -366,14 +367,15 @@ function mini(t,u,xs,ys,f,lo,hi,kao){
  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik ${t} terhadap kadar aspal">${s}</svg>`;
 }
 function mzCalc(){
+ MZResult=null;
  const M=MZ(),num=v=>parseFloat(v),ln=v=>{const x=parseFloat(v);return isNaN(x)?null:x};
  const gsb=num(M.g.gsb),gse=num(M.g.gse),gb=num(M.g.gb),pg=num(M.g.pg)||1;
- const rows=M.rows.map(r=>({ka:num(r.ka),a:num(r.a),b:num(r.b),c:num(r.c),st:num(r.st),fl:num(r.fl)})).filter(r=>r.ka>=0&&r.a>0&&r.b>r.c);
+ const rows=M.rows.map((r,index)=>({index,ka:num(r.ka),a:num(r.a),b:num(r.b),c:num(r.c),st:num(r.st),fl:num(r.fl)})).filter(r=>r.ka>=0&&r.a>0&&r.b>r.c);
  const msg=t=>{$("mze").textContent=t;$("mzo").hidden=true};
  if(!rows.length)return msg("Isi data benda uji atau tekan Muat contoh.");
  if(!(gsb>0&&gse>0&&gb>0))return msg("Isi BJ bulk (Gsb), BJ efektif (Gse), dan BJ aspal (Gb).");
  $("mze").textContent="";
- const sp=rows.map(r=>{const gmb=r.a/(r.b-r.c),gmm=100/((100-r.ka)/gse+r.ka/gb),vim=100*(gmm-gmb)/gmm,vma=100-gmb*(100-r.ka)/gsb,st=r.st*pg;return{ka:r.ka,gmb,vim,vma,vfa:100*(vma-vim)/vma,st,fl:r.fl,mq:st/r.fl}});
+ const sp=rows.map(r=>{const gmb=r.a/(r.b-r.c),gmm=100/((100-r.ka)/gse+r.ka/gb),vim=100*(gmm-gmb)/gmm,vma=100-gmb*(100-r.ka)/gsb,st=r.st*pg;return{...r,gmb,gmm,vim,vma,vfa:100*(vma-vim)/vma,st,fl:r.fl,mq:st/r.fl}});
  const grp=new Map();
  sp.forEach(s=>{const k=Math.round(s.ka*1000)/1000;if(!grp.has(k))grp.set(k,[]);grp.get(k).push(s)});
  const ks=[...grp.keys()].sort((a,b)=>a-b);
@@ -388,6 +390,7 @@ function mzCalc(){
  let best=null,s0=-1;
  all.forEach((v,i)=>{if(v&&s0<0)s0=i;if((!v||i===all.length-1)&&s0>=0){const e=v?i:i-1;if(!best||e-s0>best[1]-best[0])best=[s0,e];s0=-1}});
  const kao=best?(grid[best[0]]+grid[best[1]])/2:null;
+ MZResult={spec:M.sp,g:{...M.g},limits:MT.map(m=>({key:m[0],name:m[1],unit:m[2],min:m[3],max:m[4]})),samples:sp,averages:A,kao,range:best?[grid[best[0]],grid[best[1]]]:null};
  const f1=v=>isFinite(v)?nf(v):"–",n3=v=>isFinite(v)?v.toLocaleString("id-ID",{maximumFractionDigits:3}):"–";
  $("mzk").innerHTML=kao!=null?`<div class="k"><span>Kadar aspal optimum (KAO)</span><b>${nf(Math.round(kao*100)/100)}%</b><small>titik tengah rentang yang memenuhi semua syarat</small></div><div class="k"><span>Rentang yang memenuhi</span><b style="font-size:1.5rem">${nf(grid[best[0]])} – ${nf(grid[best[1]])}%</b></div><div class="k"><span>Perkiraan pada KAO</span><small style="color:var(--st)">${MT.map((m,i)=>fits[i]?`${m[1]} ${nf(pev(fits[i],kao))}`:"").filter(Boolean).join(" · ")}</small></div>`:`<div class="k"><span>Kadar aspal optimum (KAO)</span><b style="font-size:1.5rem">Belum ditemukan</b><small>${ks.length<2?"Butuh minimal 2 kadar aspal berbeda.":"Tidak ada kadar aspal yang memenuhi semua syarat."}</small></div>`;
  $("mzt").innerHTML=A.map(a=>`<tr><td>${nf(a.ka)}</td><td class="r">${a.n}</td><td class="r">${n3(a.gmb)}</td>`+MT.map(m=>{const v=a[m[0]],b=isFinite(v)&&((m[3]!=null&&v<m[3])||(m[4]!=null&&v>m[4]));return `<td class="r${b?" bad2":""}">${f1(v)}</td>`}).join("")+`</tr>`).join("");
@@ -491,26 +494,138 @@ function exportXlsx(){
   ws["!ref"]=`A1:H${rag}`;ws["!cols"]=[{wch:24},{wch:12},{wch:16},{wch:12},{wch:16},{wch:14},{wch:16},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws,"JMF Kelompok "+g);
  });
+ const M=MZ(),ws={},mPut=(r,c,v,f)=>put(ws,r,c,v,f),val=v=>v===""||v==null?NaN:parseFloat(v);
+ mPut(0,0,"Data dan hasil Uji Marshall");
+ mPut(1,0,"Spesifikasi");mPut(1,1,M.sp);
+ PRM.forEach(([key,label],i)=>{mPut(2+i,0,label);mPut(2+i,1,val(M.g[key]))});
+ mPut(6,0,"Batas spesifikasi");mPut(7,0,"Parameter");mPut(7,1,"Min");mPut(7,2,"Maks");
+ const limitValues={vi1:["VIM min (%)",val(M.lim.vi1),NaN],vi2:["VIM maks (%)",NaN,val(M.lim.vi2)],vma:["VMA min (%)",val(M.lim.vma),NaN],vfa:["VFA min (%)",val(M.lim.vfa),NaN],st:["Stabilitas min (kg)",val(M.lim.st),NaN],fl1:["Flow min (mm)",val(M.lim.fl1),NaN],fl2:["Flow maks (mm)",NaN,val(M.lim.fl2)],mq:["MQ min (kg/mm)",val(M.lim.mq),NaN]};
+ LIMS.forEach(([key],i)=>{const entry=limitValues[key];mPut(8+i,0,entry[0]);mPut(8+i,1,entry[1]);mPut(8+i,2,entry[2])});
+ const sampleTitle=18,sampleHeader=19,sampleStart=20;
+ mPut(sampleTitle,0,"Data tiap benda uji dan hasil perhitungan");
+ ["KA (%)","Berat kering (g)","Berat SSD (g)","Berat dalam air (g)","Stabilitas (baca)","Flow (mm)","Gmb","Gmm","VIM (%)","VMA (%)","VFA (%)","Stabilitas (kg)","MQ (kg/mm)"].forEach((label,i)=>mPut(sampleHeader,i,label));
+ const calculatedByIndex=new Map((MZResult?.samples||[]).map(sample=>[sample.index,sample]));
+ M.rows.forEach((sample,index)=>{
+  const row=sampleStart+index,excelRow=row+1,result=calculatedByIndex.get(index);
+  ["ka","a","b","c","st","fl"].forEach((key,col)=>mPut(row,col,val(sample[key])));
+  if(!result)return;
+  const formulaCells=[
+   [6,result.gmb,`IFERROR(B${excelRow}/(C${excelRow}-D${excelRow}),"")`],
+   [7,result.gmm,`IFERROR(100/((100-A${excelRow})/$B$4+A${excelRow}/$B$5),"")`],
+   [8,result.vim,`IFERROR(100*(H${excelRow}-G${excelRow})/H${excelRow},"")`],
+   [9,result.vma,`IFERROR(100-G${excelRow}*(100-A${excelRow})/$B$3,"")`],
+   [10,result.vfa,`IFERROR(100*(K${excelRow}-I${excelRow})/K${excelRow},"")`],
+   [11,result.st,`IFERROR(E${excelRow}*$B$6,"")`],
+   [12,result.mq,`IFERROR(L${excelRow}/F${excelRow},"")`],
+  ];
+  formulaCells.forEach(([col,value,formula])=>mPut(row,col,value,formula));
+ });
+ const summaryTitle=sampleStart+M.rows.length+1,summaryHeader=summaryTitle+1;
+ mPut(summaryTitle,0,"Ringkasan rata-rata per kadar aspal");
+ ["KA (%)","Jumlah sampel","Gmb","VIM (%)","VMA (%)","VFA (%)","Stabilitas (kg)","Flow (mm)","MQ (kg/mm)"].forEach((label,i)=>mPut(summaryHeader,i,label));
+ let lastRow=Math.max(summaryHeader,sampleStart+M.rows.length-1);
+ if(MZResult){
+  MZResult.averages.forEach((average,index)=>{
+   const row=summaryHeader+1+index;
+   [average.ka,average.n,average.gmb,average.vim,average.vma,average.vfa,average.st,average.fl,average.mq].forEach((value,col)=>mPut(row,col,value));
+   lastRow=row;
+  });
+  const kaoRow=summaryHeader+2+MZResult.averages.length;
+  mPut(kaoRow,0,"Kadar aspal optimum (KAO, %)");mPut(kaoRow,1,MZResult.kao);
+  mPut(kaoRow+1,0,"Rentang kadar aspal yang memenuhi (%)");
+  if(MZResult.range){mPut(kaoRow+1,1,MZResult.range[0]);mPut(kaoRow+1,2,MZResult.range[1])}
+  else mPut(kaoRow+1,1,"Tidak ditemukan");
+  lastRow=kaoRow+1;
+ }
+ ws["!ref"]=`A1:M${lastRow+1}`;
+ ws["!cols"]=[{wch:28},{wch:18},{wch:18},{wch:20},{wch:18},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:18},{wch:14}];
+ XLSX.utils.book_append_sheet(wb,ws,"Marshall");
  saveF("JMF-gradasi.xlsx",XLSX.write(wb,{bookType:"xlsx",type:"array"}));
 }
-async function exportPng(){
- const svg=document.querySelector("#ch svg");
- if(!svg)return xs("Hitung campuran fraksi dulu agar grafik tersedia.");
+async function renderSvg(svg){
+ const clone=svg.cloneNode(true),originals=[svg,...svg.querySelectorAll("*")],copies=[clone,...clone.querySelectorAll("*")];
+ originals.forEach((element,index)=>{
+  const style=getComputedStyle(element);
+  ["fill","stroke","stroke-width","stroke-dasharray","opacity","font-size","font-family","text-anchor"].forEach(property=>{
+   copies[index].style.setProperty(property,style.getPropertyValue(property));
+  });
+ });
+ const viewBox=svg.viewBox.baseVal;
+ clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
+ clone.setAttribute("width",viewBox.width);clone.setAttribute("height",viewBox.height);
+ const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)],{type:"image/svg+xml;charset=utf-8"}));
+ const image=new Image();
  try{
-  const c=svg.cloneNode(true),src=svg.querySelectorAll("*"),dst=c.querySelectorAll("*");
-  src.forEach((e,i)=>{const cs=getComputedStyle(e);["fill","stroke","stroke-width","stroke-dasharray","opacity","font-size","font-family"].forEach(p=>dst[i].style.setProperty(p,cs.getPropertyValue(p)))});
-  const vb=svg.viewBox.baseVal,W=vb.width*2,H=vb.height*2;
-  c.setAttribute("xmlns","http://www.w3.org/2000/svg");c.setAttribute("width",W);c.setAttribute("height",H);
-  const bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
-  bg.setAttribute("width",vb.width);bg.setAttribute("height",vb.height);bg.setAttribute("fill",getComputedStyle(document.documentElement).getPropertyValue("--cd").trim()||"#fff");
-  c.insertBefore(bg,c.firstChild);
-  const img=new Image();
-  await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(c))});
-  const cv=document.createElement("canvas");cv.width=W;cv.height=H;cv.getContext("2d").drawImage(img,0,0,W,H);
-  const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
-  if(!blob)return xs("Gagal membuat gambar grafik.");
-  await saveF("grafik-gradasi.png",blob);
- }catch(e){xs("Gagal membuat gambar grafik.")}
+  await new Promise((resolve,reject)=>{
+   image.onload=resolve;
+   image.onerror=()=>reject(new Error("Grafik tidak bisa dirender sebagai gambar."));
+   image.src=url;
+  });
+  return image;
+ }finally{URL.revokeObjectURL(url)}
+}
+async function exportPng(){
+ xs("Menyiapkan gambar grafik...");
+ try{
+  const charts=[];
+  const gradation=document.querySelector("#ch svg");
+  if(gradation&&gradation.getClientRects().length)charts.push({svg:gradation,title:"Gradasi agregat",width:680});
+  document.querySelectorAll("#mzc2 svg").forEach(svg=>{
+   if(svg.getClientRects().length)charts.push({
+    svg,
+    title:(svg.getAttribute("aria-label")||"Grafik Marshall").replace(/^Grafik /,""),
+    width:320,
+   });
+  });
+  if(!charts.length)throw new Error("Belum ada grafik hasil. Jalankan perhitungan gradasi atau Uji Marshall terlebih dahulu.");
+
+  for(const chart of charts){
+   chart.image=await renderSvg(chart.svg);
+   const viewBox=chart.svg.viewBox.baseVal;
+   chart.height=viewBox.height*chart.width/viewBox.width;
+  }
+
+  const width=680,margin=24,gap=20,titleHeight=32,scale=2;
+  const gradationChart=charts.find(chart=>chart.title==="Gradasi agregat");
+  const marshallCharts=charts.filter(chart=>chart!==gradationChart);
+  let height=margin+titleHeight;
+  if(gradationChart)height+=gradationChart.height+gap;
+  for(let i=0;i<marshallCharts.length;i+=2){
+   height+=titleHeight+Math.max(...marshallCharts.slice(i,i+2).map(chart=>chart.height))+gap;
+  }
+  height+=margin;
+
+  const canvas=document.createElement("canvas");
+  canvas.width=(width+margin*2)*scale;canvas.height=height*scale;
+  const context=canvas.getContext("2d");
+  if(!context)throw new Error("Browser tidak dapat menyiapkan gambar.");
+  context.scale(scale,scale);
+  context.fillStyle=getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()||"#fff";
+  context.fillRect(0,0,width+margin*2,height);
+  context.fillStyle=getComputedStyle(document.documentElement).getPropertyValue("--tx").trim()||"#1b252d";
+  context.font="700 20px Arial, sans-serif";
+  context.fillText("Grafik hasil perhitungan",margin,margin+20);
+  let y=margin+titleHeight;
+  const drawChart=(chart,x,top)=>{
+   context.font="600 15px Arial, sans-serif";
+   context.fillText(chart.title,x,top+18);
+   context.drawImage(chart.image,x,top+titleHeight,chart.width,chart.height);
+  };
+  if(gradationChart){
+   drawChart(gradationChart,margin,y);
+   y+=titleHeight+gradationChart.height+gap;
+  }
+  const columnWidth=(width-gap)/2;
+  for(let i=0;i<marshallCharts.length;i+=2){
+   const row=marshallCharts.slice(i,i+2);
+   row.forEach((chart,column)=>drawChart(chart,margin+column*(columnWidth+gap),y));
+   y+=titleHeight+Math.max(...row.map(chart=>chart.height))+gap;
+  }
+  const blob=await new Promise((resolve,reject)=>{
+   canvas.toBlob(result=>result?resolve(result):reject(new Error("Browser gagal membuat file PNG.")),"image/png");
+  });
+  await saveF("grafik-hasil-lengkap.png",blob);
+ }catch(e){xs("Gagal membuat gambar grafik: "+(e&&e.message?e.message:String(e)))}
 }
 $("dx").onclick=exportXlsx;$("dp").onclick=exportPng;
 $("ib").oninput=e=>{const t=e.target,c=t.dataset.c;if(!c)return;const r=S.rows[+t.dataset.r];if(c[0]==="f")r.f[+c.slice(1)]=t.value;else r[c]=t.value;persist();refresh()};

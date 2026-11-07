@@ -15,4 +15,4 @@ ui.html(f'<div class="gx-two">{theme.formulas()}{theme.checks()}</div>')
 
 st.write("")
 with st.container(key="cta-main"):
-    st.page_link("views/kalkulator.py", label="Buka kalkulator")
+    st.page_link("kalkulator.py", label="Buka kalkulator")

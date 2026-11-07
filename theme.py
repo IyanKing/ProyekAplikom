@@ -307,7 +307,7 @@ def strip() -> str:
     items = [
         ("doc", "Acuan Bina Marga 2018", "Batas gradasi dan syarat Marshall bisa diedit."),
         ("grid", "Rumus hidup", "Excel hasil ekspor tetap menghitung ulang."),
-        ("chart", "Grafik siap laporan", "Unduh grafik gradasi sebagai gambar."),
+        ("chart", "Grafik siap laporan", "Unduh grafik gradasi dan Marshall sebagai PNG."),
         ("device", "Data di perangkat", "Tersimpan di browser, tidak dikirim ke server."),
         ("window", "Tanpa instalasi", "Cukup dibuka lewat browser."),
     ]
@@ -344,7 +344,7 @@ STEPS = [
     ("Atur pencarian", "Pilih langkah proporsi (1%, 0,5%, atau 0,1%) dan berat total campuran. Untuk empat fraksi, langkah terkecil adalah 0,5%."),
     ("Cari proporsi optimal", "Aplikasi mencari komposisi dengan margin terkecil terhadap batas yang paling besar. Proporsi bisa dibulatkan; tabel dan grafik ikut berubah."),
     ("Lanjut ke JMF dan Marshall", "Hitung berat per saringan untuk Kelompok 1–4, lalu isi data benda uji untuk mendapatkan VIM, VMA, VFA, MQ, dan kadar aspal optimum."),
-    ("Unduh hasil", "Ekspor Excel berisi rumus hidup dan sheet tiap kelompok. Grafik gradasi diunduh sebagai gambar untuk laporan."),
+    ("Unduh hasil", "Ekspor Excel berisi gradasi, JMF, dan data Marshall. Semua grafik yang tersedia bisa diunduh sebagai PNG."),
 ]
 
 
@@ -395,21 +395,35 @@ _OVERRIDE = """<style>
 @import url('%FONTS%');
 :root[data-theme="dark"]{--bg:#1b1815;--cd:#251d16;--tx:#f1e8dc;--mu:#b8a995;--bd:#3a2f25;--ac:#e9b873;--ak:#20160c;
 --sf:#2f241b;--er:#ff8a7a;--cr:#f6ead8;--sl:#33271c;--st:#f6ecdd;--hl:#f2c46d;color-scheme:dark}
-html,body{background:#1b1815}
+:root[data-theme="light"]{--bg:#f4efe7;--cd:#fffaf2;--tx:#30251b;--mu:#746659;--bd:#dfd1bd;--ac:#9a6429;--ak:#fffaf2;
+--sf:#ece1d1;--er:#a8372b;--cr:#bd531d;--sl:#4a3524;--st:#fffaf2;--hl:#f2c46d;color-scheme:light}
+html,body{background:var(--bg)}
 body{font-family:'Hanken Grotesk',system-ui,sans-serif}
 h1,h2{font-family:'Playfair Display',Georgia,serif;letter-spacing:0}
 main>h1,main>.s{display:none}
 main{padding-top:6px}
-.c{border-radius:16px;background:linear-gradient(180deg,#281f18,#221a14)}
+:root[data-theme="dark"] .c{border-radius:16px;background:linear-gradient(180deg,#281f18,#221a14)}
+:root[data-theme="light"] .c{border-radius:16px;background:linear-gradient(180deg,#fffaf2,#f3eadc)}
 button{border-radius:999px}
+.gx-calc-controls{display:flex;justify-content:flex-end;margin:0 0 10px}
+.gx-theme-button{padding:7px 14px;border:1px solid var(--bd);background:var(--sf);color:var(--tx)}
 </style>""".replace("%FONTS%", FONTS)
 
 _PATCH = """<script>
 (function(){
- try{ if(!(window.claude&&window.claude.use)){
-  DL={save:async function(o){var d=o.data,b=(d instanceof Blob)?d:new Blob([d]),a=document.createElement('a');
-   a.href=URL.createObjectURL(b);a.download=o.filename;document.body.appendChild(a);a.click();a.remove();
-   setTimeout(function(){URL.revokeObjectURL(a.href)},2000)}};
+ var root=document.documentElement,button=document.getElementById('gx-theme-toggle');
+ try{var saved=localStorage.getItem('grad_theme');root.dataset.theme=saved==='light'?'light':'dark'}catch(err){root.dataset.theme='dark'}
+ function updateTheme(){var dark=root.dataset.theme==='dark';button.textContent=dark?'☀️ Tema terang':'🌙 Tema gelap';button.setAttribute('aria-pressed',String(dark))}
+ updateTheme();
+ button.addEventListener('click',function(){
+  root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';
+  try{localStorage.setItem('grad_theme',root.dataset.theme)}catch(err){}
+  updateTheme();
+ });
+ try{if(!(window.claude&&window.claude.use)){
+  DL={save:async function(o){var b=o.data instanceof Blob?o.data:new Blob([o.data]),url=URL.createObjectURL(b),a=document.createElement('a');
+   a.href=url;a.download=o.filename;a.hidden=true;document.body.appendChild(a);a.click();a.remove();
+   setTimeout(function(){URL.revokeObjectURL(url)},60000)}};
   var e=document.getElementById('ex2');if(e)e.hidden=false;
  }}catch(err){}
  function fit(){try{var f=window.frameElement;if(f)f.style.height=(document.body.scrollHeight+24)+'px'}catch(err){}}
@@ -421,6 +435,11 @@ _PATCH = """<script>
 
 def sesuaikan_kalkulator(src: str) -> str:
     """Selaraskan gradasi.html dengan tema situs tanpa mengubah file aslinya."""
-    src = src.replace('<html lang="id">', '<html lang="id" data-theme="dark">', 1)
     src = src.replace("</head>", _OVERRIDE + "</head>", 1)
+    controls = (
+        '<div class="gx-calc-controls"><button id="gx-theme-toggle" '
+        'class="gx-theme-button" type="button" aria-pressed="true">'
+        "☀️ Tema terang</button></div>"
+    )
+    src = src.replace("<main>", "<main>" + controls, 1)
     return src.replace("</body>", _PATCH + "</body>", 1)

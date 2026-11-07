@@ -10,9 +10,9 @@ with kiri:
     ui.html(theme.hero_text())
     a, b, _ = st.columns([1.25, 1.2, 0.8], gap="small")
     with a, st.container(key="cta-main"):
-        st.page_link("views/kalkulator.py", label="Buka kalkulator")
+        st.page_link("kalkulator.py", label="Buka kalkulator")
     with b, st.container(key="cta-alt"):
-        st.page_link("views/cara_kerja.py", label="Lihat cara kerja")
+        st.page_link("cara_kerja.py", label="Lihat cara kerja")
     ui.html(theme.hero_note())
 with kanan:
     ui.html(theme.hero_art())
@@ -28,7 +28,7 @@ with kiri:
 with kanan:
     ui.html(theme.split_text())
     with st.container(key="split"):
-        st.page_link("views/kalkulator.py", label="Coba dengan data contoh")
+        st.page_link("kalkulator.py", label="Coba dengan data contoh")
 
 ui.html(theme.strip())
 
@@ -40,4 +40,4 @@ with st.container(key="band"):
     with teks:
         ui.html(theme.band_text())
     with tombol:
-        st.page_link("views/kalkulator.py", label="Buka kalkulator")
+        st.page_link("kalkulator.py", label="Buka kalkulator")
