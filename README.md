@@ -9,6 +9,7 @@ ui.py               pembantu tampilan
 beranda.py          halaman beranda
 kalkulator.py       halaman kalkulator
 data_tersimpan.py   perpustakaan file JSON data kalkulator
+laporan_pdf.py      pembuat laporan PDF dari data kalkulator
 cara_kerja.py       halaman panduan
 tentang.py          halaman tentang
 gradasi.html        kalkulator (HTML + JavaScript), disesuaikan tema saat dimuat
@@ -29,3 +30,8 @@ masing-masing, lalu dimuat atau dihapus dari browser tersebut. Data ini tidak
 tersinkron ke perangkat lain. Data juga dapat diunduh sebagai JSON untuk
 ditinjau atau diunduh ulang melalui halaman Data Tersimpan; muat berkas JSON
 yang sama di Kalkulator untuk memulihkan data gradasi, JMF, dan Marshall.
+
+Halaman Laporan PDF menerima file JSON dari Kalkulator, menghitung ulang
+gradasi/JMF/Marshall yang tersedia, lalu menyediakan laporan PDF berisi
+ringkasan, tabel, grafik, dan kesimpulan. Laporan juga dapat dicoba dengan
+data ilustrasi.
