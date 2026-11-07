@@ -420,12 +420,6 @@ _PATCH = """<script>
   try{localStorage.setItem('grad_theme',root.dataset.theme)}catch(err){}
   updateTheme();
  });
- try{if(!(window.claude&&window.claude.use)){
-  DL={save:async function(o){var b=o.data instanceof Blob?o.data:new Blob([o.data]),url=URL.createObjectURL(b),a=document.createElement('a');
-   a.href=url;a.download=o.filename;a.hidden=true;document.body.appendChild(a);a.click();a.remove();
-   setTimeout(function(){URL.revokeObjectURL(url)},60000)}};
-  var e=document.getElementById('ex2');if(e)e.hidden=false;
- }}catch(err){}
  function fit(){try{var f=window.frameElement;if(f)f.style.height=(document.body.scrollHeight+24)+'px'}catch(err){}}
  try{new ResizeObserver(fit).observe(document.body)}catch(err){}
  window.addEventListener('load',fit);setTimeout(fit,700);
