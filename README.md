@@ -24,7 +24,8 @@ Kalkulator menyediakan pilihan tema terang/gelap, ekspor Excel untuk hasil
 gradasi, JMF, dan Marshall, serta unduhan PNG yang merangkum grafik gradasi
 dan grafik Marshall yang tersedia.
 
-Data kalkulator dapat disimpan sebagai JSON dari halaman Kalkulator, lalu
-ditinjau atau diunduh ulang melalui halaman Data Tersimpan. Muat berkas JSON
-yang sama di Kalkulator untuk memulihkan data gradasi, JMF, dan Marshall;
-hasilnya dihitung ulang secara otomatis.
+Di halaman Kalkulator, data dapat disimpan dengan nama di penyimpanan browser
+masing-masing, lalu dimuat atau dihapus dari browser tersebut. Data ini tidak
+tersinkron ke perangkat lain. Data juga dapat diunduh sebagai JSON untuk
+ditinjau atau diunduh ulang melalui halaman Data Tersimpan; muat berkas JSON
+yang sama di Kalkulator untuk memulihkan data gradasi, JMF, dan Marshall.
