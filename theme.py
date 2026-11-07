@@ -23,6 +23,7 @@ CSS = """
 @import url('%FONTS%');
 :root{--bg:#1b1815;--panel:#251d16;--panel2:#2f241b;--line:rgba(233,184,115,.28);
 --gold:#e9b873;--gold-d:#c98a3a;--tan:#ecc994;--tx:#f1e8dc;--mu:#b8a995;--cream:#f3e4cf;--ink:#2a1d12}
+html,body,[data-testid="stAppViewContainer"],[data-testid="stMain"]{background-color:var(--bg)}
 .stApp{background:radial-gradient(900px 480px at 88% -6%,rgba(201,138,58,.20),transparent 62%),
 radial-gradient(700px 420px at -8% 38%,rgba(201,138,58,.08),transparent 60%),var(--bg)}
 html,body,[class*="st-"],.stApp{font-family:'Hanken Grotesk',system-ui,sans-serif}
