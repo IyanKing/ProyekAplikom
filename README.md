@@ -14,7 +14,9 @@ perbandingan.py     perbandingan dua desain gradasi dan Marshall
 laporan_pdf.py      pembuat laporan PDF dan Word dari data kalkulator
 cara_kerja.py       halaman panduan
 tentang.py          halaman tentang
-gradasi.html        kalkulator (HTML + JavaScript), disesuaikan tema saat dimuat
+gradasi.html        struktur kalkulator (template HTML)
+styles.css          gaya kalkulator, disisipkan saat template dimuat
+app.js              logika kalkulator, disisipkan saat template dimuat
 logo.svg            logo aplikasi
 .streamlit/config.toml
 ```
@@ -26,6 +28,10 @@ Untuk Streamlit Community Cloud, atur **Main file path** ke `app.py`.
 Kalkulator menyediakan pilihan tema terang/gelap, ekspor Excel untuk hasil
 gradasi, JMF, dan Marshall, serta unduhan PNG yang merangkum grafik gradasi
 dan grafik Marshall yang tersedia.
+
+Template kalkulator dipadukan dengan `styles.css` dan `app.js` oleh
+`kalkulator.py` sebelum dikirim ke iframe Streamlit. Validasi urutan gradasi
+di `app.js` dan `laporan_pdf.py` memakai toleransi yang harus tetap sinkron.
 
 Di halaman Kalkulator, data dapat disimpan dengan nama di penyimpanan browser
 masing-masing, lalu dimuat atau dihapus dari browser tersebut. Data ini tidak

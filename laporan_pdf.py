@@ -42,6 +42,7 @@ LIGHT = colors.HexColor("#e1e7ea")
 BORDER = colors.HexColor("#cdd3d8")
 DANGER = colors.HexColor("#b3261e")
 KAS = {1: 5.0, 2: 5.5, 3: 6.0, 4: 6.5}
+GRADATION_ORDER_TOL = 0.01
 MONTHS = (
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember",
@@ -240,6 +241,7 @@ def _validate_state(state):
 
 def validate_data_warnings(state, grad):
     """Return non-blocking warnings for suspicious gradation and Marshall data."""
+    # Keep this threshold synchronized with validateGradationOrder() in app.js.
     warnings = []
     rows = grad["rows"]
     for fraction_index in range(grad["n"]):
@@ -249,7 +251,7 @@ def validate_data_warnings(state, grad):
             if (
                 coarse_value is not None
                 and fine_value is not None
-                and fine_value > coarse_value + 0.01
+                and fine_value > coarse_value + GRADATION_ORDER_TOL
             ):
                 warnings.append(
                     f"Fraksi {chr(65 + fraction_index)}: % lolos di ayakan "
