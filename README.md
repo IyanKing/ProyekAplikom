@@ -10,6 +10,10 @@ ditinjau terhadap data laboratorium dan spesifikasi proyek yang berlaku.
 - **Kalkulator** — menggabungkan fraksi agregat, mencari proporsi campuran,
   menampilkan grafik/tabel gradasi, menghitung JMF, parameter Marshall, KAO,
   dan estimasi biaya material.
+- **Tiga preset kalkulator** — contoh standar untuk demonstrasi, template
+  kosong untuk memasukkan hasil laboratorium sendiri, dan skenario uji
+  tidak wajar untuk melihat respons validasi. Template kosong bukan data
+  hasil pengujian nyata.
 - **Ekspor kalkulator** — menyimpan/memuat data JSON, mengunduh hasil Excel
   dan grafik PNG, atau mengunduh satu CSV gabungan untuk analisis di Excel,
   Python, R, dan perangkat lain.
@@ -52,6 +56,15 @@ Streamlit; ketiga berkas tersebut harus tetap berada di direktori yang sama.
    dalam Rp/ton. Perhitungan biaya tersedia setelah komposisi JMF valid.
 5. Simpan data di browser, unduh JSON sebagai cadangan yang dapat dimuat
    kembali, atau unduh CSV untuk mengolah data di perangkat lain.
+
+Tombol **Muat contoh standar** mempertahankan data ilustrasi bawaan.
+**Muat template data asli** mengosongkan nilai pengukuran agar dapat diisi
+dengan hasil praktikum/laboratorium Anda. Tidak ada data laboratorium nyata
+yang disertakan atau diverifikasi oleh proyek ini; perbandingan terhadap
+perhitungan manual memerlukan data asli tersebut. **Muat skenario uji aneh**
+memuat proporsi 110%, satu nilai persen lolos kosong, ayakan terbalik,
+beberapa data Marshall tidak wajar, dan satu kadar aspal valid saja untuk
+menguji pesan validasi serta kondisi KAO.
 
 ### Ekspor CSV untuk pengguna teknis
 

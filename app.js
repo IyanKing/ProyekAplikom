@@ -18,6 +18,45 @@ const mkRows=k=>PS[k].map(([d,a,b])=>({d:String(d),mn:String(a),mx:String(b),f:[
 let S=null,G=null,fresh=false;
 try{const j=JSON.parse(localStorage.getItem("grad_s")||"null");if(j&&Array.isArray(j.rows)&&j.rows.every(r=>r&&Array.isArray(r.f))&&[2,3,4].includes(j.n)&&Array.isArray(j.p)){j.rows.forEach(r=>{while(r.f.length<4)r.f.push("")});S=j}}catch(e){}
 function sample(){const r=mkRows("AC-WC");r.forEach((x,i)=>{x.f=SF[i].map(String).concat([""])});return{sp:"AC-WC",n:3,rows:r,p:eq(3)}}
+function sampleRealTemplate(){
+ const rows=mkRows("AC-WC");
+ return{
+  sp:"AC-WC",n:3,rows,p:["","",""],
+  jm:{kg:"2",ka:"5.5",k:"0.75",bt:"1200",tg:"mid"},
+  mz:{
+   sp:"AC-WC",
+   lim:{vi1:"3",vi2:"5",vma:"15",vfa:"65",st:"800",fl1:"2",fl2:"4",mq:"250"},
+   g:{gsb:"",gse:"",gb:"1.03",pg:"1"},
+   rows:[
+    {ka:"5",a:"",b:"",c:"",st:"",fl:""},
+    {ka:"5.5",a:"",b:"",c:"",st:"",fl:""},
+    {ka:"6",a:"",b:"",c:"",st:"",fl:""},
+    {ka:"6.5",a:"",b:"",c:"",st:"",fl:""},
+   ],
+  },
+ };
+}
+function sampleOdd(){
+ const rows=mkRows("AC-WC").map((row,index)=>({
+  ...row,f:SF[index].map(String).concat([""]),
+ })).reverse();
+ rows[2].f[0]="98";
+ rows[4].f[1]="";
+ return{
+  sp:"AC-WC",n:3,rows,p:["35","35","40"],
+  jm:{kg:"2",ka:"5.5",k:"0.75",bt:"1200",tg:"mid"},
+  mz:{
+   sp:"AC-WC",
+   lim:{vi1:"3",vi2:"5",vma:"15",vfa:"65",st:"800",fl1:"2",fl2:"4",mq:"250"},
+   g:{gsb:"2.65",gse:"2.70",gb:"1.03",pg:"1"},
+   rows:[
+    {ka:"5.5",a:"1200",b:"1190",c:"500",st:"1000",fl:"3"},
+    {ka:"5.5",a:"1200",b:"1210",c:"500",st:"1050",fl:"0"},
+    {ka:"120",a:"1200",b:"1210",c:"500",st:"1100",fl:"3.5"},
+   ],
+  },
+ };
+}
 if(!S){S=sample();fresh=true}
 const persist=()=>{try{localStorage.setItem("grad_s",JSON.stringify(S))}catch(e){}};
 
@@ -26,11 +65,20 @@ const persist=()=>{try{localStorage.setItem("grad_s",JSON.stringify(S))}catch(e)
 const GRADATION_ORDER_TOL = 0.01;
 function validateGradationOrder(rows){
  const warns=[];
+ const entered=rows.filter(row=>Number.isFinite(row.d)&&row.d>0);
+ for(let i=1;i<entered.length;i++){
+  if(entered[i].d>=entered[i-1].d){
+   warns.push(
+    `Urutan ayakan tidak menurun: ${sv(entered[i-1].d)} mm harus lebih besar dari ${sv(entered[i].d)} mm berikutnya.`
+   );
+   break;
+  }
+ }
  const sorted=rows.slice().sort((a,b)=>b.d-a.d);
  for(let k=0;k<S.n;k++){
   for(let i=1;i<sorted.length;i++){
    const prev=sorted[i-1].f[k],cur=sorted[i].f[k];
-   if(isFinite(prev)&&isFinite(cur)&&cur>prev+GRADATION_ORDER_TOL){
+   if(Number.isFinite(prev)&&Number.isFinite(cur)&&cur>prev+GRADATION_ORDER_TOL){
     warns.push(`Fraksi ${LB[k]}: % lolos di ayakan ${sv(sorted[i].d)} mm (${nf(cur)}%) lebih besar dari ayakan yang lebih kasar ${sv(sorted[i-1].d)} mm (${nf(prev)}%). Seharusnya turun atau sama.`);
    }
   }
@@ -54,7 +102,10 @@ function validateProportions(proportions){
 function validateMarshall(rows){
  const warns=[];
  rows.forEach((r,i)=>{
-  const dry=parseFloat(r.a),ssd=parseFloat(r.b),flow=parseFloat(r.fl);
+  const ka=parseFloat(r.ka),dry=parseFloat(r.a),ssd=parseFloat(r.b),flow=parseFloat(r.fl);
+  if(Number.isFinite(ka)&&(ka<0||ka>=100)){
+   warns.push(`Benda uji #${i+1}: kadar aspal ${nf(ka)}% tidak valid (harus ≥ 0% dan < 100%). Baris ini tidak dihitung.`);
+  }
   if(isFinite(dry)&&isFinite(ssd)&&dry>0&&ssd>0&&ssd<dry-0.01){
    warns.push(`Benda uji #${i+1}: berat SSD (${nf(ssd)} g) lebih kecil dari berat kering (${nf(dry)} g). SSD harus ≥ kering.`);
   }
@@ -138,7 +189,11 @@ function refresh0(){
  const {rows,errs}=data();
  $("err").innerHTML=errs.map(esc).join("<br>");
  const warns=[];
- if(!errs.length)warns.push(...validateGradationOrder(rows));
+ const enteredRows=S.rows.map(row=>({
+  d:parseFloat(row.d),
+  f:row.f.slice(0,S.n).map(value=>parseFloat(value)),
+ }));
+ warns.push(...validateGradationOrder(enteredRows));
  if(S.p.slice(0,S.n).some(v=>v!==""&&v!==undefined))warns.push(...validateProportions(S.p.slice(0,S.n)));
  $("wrn").innerHTML=warns.length?`<b>⚠ Peringatan</b><ul>${warns.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:"";
  const pr=S.p.slice(0,S.n).map(v=>parseFloat(v)||0),tot=pr.reduce((a,b)=>a+b,0);
@@ -403,12 +458,12 @@ function mzCalc(){
  const mwarns=validateMarshall(M.rows);
  $("mzw").innerHTML=mwarns.length?`<b>⚠ Peringatan</b><ul>${mwarns.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:"";
  const gsb=num(M.g.gsb),gse=num(M.g.gse),gb=num(M.g.gb),pg=num(M.g.pg)||1;
- const rows=M.rows.map((r,index)=>({index,ka:num(r.ka),a:num(r.a),b:num(r.b),c:num(r.c),st:num(r.st),fl:num(r.fl)})).filter(r=>r.ka>=0&&r.a>0&&r.b>r.c);
+ const rows=M.rows.map((r,index)=>({index,ka:num(r.ka),a:num(r.a),b:num(r.b),c:num(r.c),st:num(r.st),fl:num(r.fl)})).filter(r=>r.ka>=0&&r.ka<100&&r.a>0&&r.b>r.c);
  const msg=t=>{$("mze").textContent=t;$("mzo").hidden=true};
  if(!rows.length)return msg("Isi data benda uji atau tekan Muat contoh.");
  if(!(gsb>0&&gse>0&&gb>0))return msg("Isi BJ bulk (Gsb), BJ efektif (Gse), dan BJ aspal (Gb).");
  $("mze").textContent="";
- const sp=rows.map(r=>{const gmb=r.a/(r.b-r.c),gmm=100/((100-r.ka)/gse+r.ka/gb),vim=100*(gmm-gmb)/gmm,vma=100-gmb*(100-r.ka)/gsb,st=r.st*pg;return{...r,gmb,gmm,vim,vma,vfa:100*(vma-vim)/vma,st,fl:r.fl,mq:st/r.fl}});
+ const sp=rows.map(r=>{const gmb=r.a/(r.b-r.c),gmm=100/((100-r.ka)/gse+r.ka/gb),vim=100*(gmm-gmb)/gmm,vma=100-gmb*(100-r.ka)/gsb,st=r.st*pg;return{...r,gmb,gmm,vim,vma,vfa:100*(vma-vim)/vma,st,fl:r.fl,mq:r.fl>0?st/r.fl:NaN}});
  const grp=new Map();
  sp.forEach(s=>{const k=Math.round(s.ka*1000)/1000;if(!grp.has(k))grp.set(k,[]);grp.get(k).push(s)});
  const ks=[...grp.keys()].sort((a,b)=>a-b);
@@ -936,7 +991,18 @@ $("sp").onchange=()=>{
  if(PS[k]){const old=S.rows;S.rows=mkRows(k);S.rows.forEach(r=>{const o=old.find(x=>parseFloat(x.d)===parseFloat(r.d));if(o)r.f=o.f.slice()})}
  persist();renderIn();refresh();
 };
-$("ex").onclick=()=>{S=sample();persist();init();$("go").click()};
+$("ex").onclick=()=>{
+ S=sample();persist();init();$("go").click();
+ $("loadNote").textContent="Data contoh standar dimuat. Nilainya hanya untuk demonstrasi, bukan hasil uji laboratorium.";
+};
+$("exReal").onclick=()=>{
+ S=sampleRealTemplate();persist();init();
+ $("loadNote").textContent="Template data lab dimuat. Ini bukan data asli; isi nilai hasil praktikum/laboratorium Anda untuk membandingkan perhitungan manual dengan aplikasi.";
+};
+$("exOdd").onclick=()=>{
+ S=sampleOdd();persist();init();
+ $("loadNote").textContent="Skenario uji aneh dimuat: total proporsi 110%, satu nilai persen lolos kosong, urutan ayakan terbalik, satu persen lolos meningkat pada ayakan halus, Marshall hanya pada satu kadar aspal valid, berat SSD di bawah berat kering, Flow nol, dan satu kadar aspal di luar rentang. Periksa pesan validasi; data ini sengaja bukan data yang layak dipakai.";
+};
 $("savedSelect").onchange=()=>{
  const name=$("savedSelect").value;
  if(name)$("savedName").value=name;

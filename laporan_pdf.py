@@ -234,6 +234,33 @@ def _validate_state(state):
         raise ValueError("Proporsi fraksi tidak lengkap.")
     if any(_number(value) is None for value in state["p"][:count]):
         raise ValueError("Proporsi fraksi harus berupa angka.")
+    for index, row in enumerate(state["rows"], start=1):
+        if "d" not in row:
+            raise ValueError(f"Baris ayakan #{index}: field ukuran ayakan 'd' tidak ditemukan.")
+        if _number(row.get("d")) is None or _number(row.get("d")) <= 0:
+            raise ValueError(f"Baris ayakan #{index}: ukuran ayakan 'd' harus berupa angka positif.")
+        for bound in ("mn", "mx"):
+            if bound not in row:
+                raise ValueError(
+                    f"Baris ayakan #{index}: field batas '{bound}' tidak ditemukan."
+                )
+            if row[bound] not in (None, "") and _number(row[bound]) is None:
+                raise ValueError(
+                    f"Baris ayakan #{index}: field batas '{bound}' harus berupa angka atau kosong."
+                )
+        if "f" not in row:
+            raise ValueError(f"Baris ayakan #{index}: field persen lolos 'f' tidak ditemukan.")
+        fractions = row.get("f")
+        if not isinstance(fractions, list) or len(fractions) < count:
+            raise ValueError(
+                f"Baris ayakan #{index}: field 'f' harus berisi persen lolos "
+                f"untuk {count} fraksi."
+            )
+        if any(_number(value) is None for value in fractions[:count]):
+            raise ValueError(
+                f"Baris ayakan #{index}: setiap persen lolos pada field 'f' "
+                "harus berupa angka."
+            )
     if not any(_number(row.get("d")) is not None and _number(row.get("d")) > 0 for row in state["rows"]):
         raise ValueError("Tidak ada ukuran ayakan yang valid.")
     return state
