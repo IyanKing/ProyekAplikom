@@ -240,45 +240,29 @@ function loadCostExample(){
  persist();
  renderCost();
 }
-function renderCost(){
- const result=$("costResult"),message=$("costMsg");
- if(!GJM){
-  result.innerHTML="";
-  message.textContent="Hitung JMF terlebih dahulu agar komposisi campuran tersedia.";
-  return;
- }
- const parsed=costPrices.map(([input])=>{
-  const raw=$(input).value;
-  return raw===""?null:Number(raw);
- });
+function calculateCostEstimate(jmf,rawPrices){
+ if(!jmf)return{error:"Hitung JMF terlebih dahulu agar komposisi campuran tersedia."};
+ const parsed=rawPrices.map(raw=>raw===""?null:Number(raw));
  if(parsed.some(value=>value===null)){
-  result.innerHTML="";
-  message.textContent="Isi keempat harga satuan (Rp/ton) untuk menghitung biaya.";
-  return;
+  return{error:"Isi keempat harga satuan (Rp/ton) untuk menghitung biaya."};
  }
  if(parsed.some(value=>!Number.isFinite(value)||value<0)){
-  result.innerHTML="";
-  message.textContent="Harga harus berupa angka nol atau lebih.";
-  return;
+  return{error:"Harga harus berupa angka nol atau lebih."};
  }
  const [asphaltPrice,coarsePrice,finePrice,fillerPrice]=parsed;
- const fractions=[GJM.ca,GJM.fa,GJM.pan];
+ const fractions=[jmf.ca,jmf.fa,jmf.pan];
  if(
   fractions.some(value=>!Number.isFinite(value)||value< -0.01)
   ||Math.abs(fractions.reduce((sum,value)=>sum+value,0)-100)>0.01
  ){
-  result.innerHTML="";
-  message.textContent="Komposisi JMF menghasilkan fraksi agregat negatif atau tidak berjumlah 100%. Periksa kembali target gradasi.";
-  return;
+  return{error:"Komposisi JMF menghasilkan fraksi agregat negatif atau tidak berjumlah 100%. Periksa kembali target gradasi."};
  }
- message.textContent="";
-
  const costsForBinder=asphaltPercent=>{
   const asphaltFraction=asphaltPercent/100;
   const aggregateFraction=1-asphaltFraction;
-  const coarseFraction=Math.max(0,GJM.ca)/100;
-  const fineFraction=Math.max(0,GJM.fa)/100;
-  const fillerFraction=Math.max(0,GJM.pan)/100;
+  const coarseFraction=Math.max(0,jmf.ca)/100;
+  const fineFraction=Math.max(0,jmf.fa)/100;
+  const fillerFraction=Math.max(0,jmf.pan)/100;
   const quantities={
    asphalt:asphaltFraction,
    coarse:aggregateFraction*coarseFraction,
@@ -297,9 +281,9 @@ function renderCost(){
    total:Object.values(costs).reduce((sum,value)=>sum+value,0),
   };
  };
- const current=costsForBinder(GJM.ka);
+ const current=costsForBinder(jmf.ka);
  const binderRates=[1,2,3,4].map(group=>KAS[group]);
- if(!binderRates.some(rate=>Math.abs(rate-GJM.ka)<0.001))binderRates.push(GJM.ka);
+ if(!binderRates.some(rate=>Math.abs(rate-jmf.ka)<0.001))binderRates.push(jmf.ka);
  binderRates.sort((a,b)=>a-b);
  const options=binderRates.map(rate=>({rate,...costsForBinder(rate)}));
  if(
@@ -307,10 +291,23 @@ function renderCost(){
   ||Object.values(current.costs).some(value=>!Number.isFinite(value))
   ||options.some(option=>!Number.isFinite(option.total))
  ){
+  return{error:"Hasil biaya terlalu besar untuk dihitung. Periksa kembali harga yang dimasukkan."};
+ }
+ return{current,options};
+}
+function renderCost(){
+ const result=$("costResult"),message=$("costMsg");
+ const estimate=calculateCostEstimate(
+  GJM,costPrices.map(([input])=>$(input).value)
+ );
+ if(estimate.error){
   result.innerHTML="";
-  message.textContent="Hasil biaya terlalu besar untuk dihitung. Periksa kembali harga yang dimasukkan.";
+  message.textContent=estimate.error;
   return;
  }
+ const {current,options}=estimate;
+ message.textContent="";
+
  const fmtShare=value=>nf(current.total>0?100*value/current.total:0);
  const amounts=[
   ["Aspal","asphalt"],
@@ -479,6 +476,261 @@ const xs=t=>{$("xs").textContent=t};
 async function saveF(name,data){
  try{await DL.save({filename:name,data});xs("Berkas dikirim ke perangkat: "+name+".")}
  catch(e){xs(e&&e.code==="declined"?"Unduhan dibatalkan.":"Unduhan gagal ("+(e&&e.code||"error")+").")}
+}
+const CSV_COLUMNS=[
+ "record_type","gradation_specification","fraction_count",
+ "fraction_A_proportion_pct","fraction_B_proportion_pct",
+ "fraction_C_proportion_pct","fraction_D_proportion_pct",
+ "sieve_mm","gradation_min_pct","gradation_max_pct",
+ "fraction_A_passing_pct","fraction_B_passing_pct",
+ "fraction_C_passing_pct","fraction_D_passing_pct",
+ "blend_passing_pct","gradation_meets_specification",
+ "retained_pct","cumulative_retained_pct","retained_weight_g",
+ "total_blend_weight_g","jmf_target","jmf_group","jmf_asphalt_pct",
+ "jmf_total_weight_g","jmf_constant_k","jmf_coarse_pct",
+ "jmf_fine_pct","jmf_filler_pct","jmf_binder_pb_pct",
+ "jmf_asphalt_weight_g","jmf_aggregate_weight_g",
+ "marshall_specification","marshall_sample_number",
+ "marshall_gsb","marshall_gse","marshall_gb","marshall_stability_multiplier",
+ "marshall_limit_vim_min_pct","marshall_limit_vim_max_pct",
+ "marshall_limit_vma_min_pct","marshall_limit_vfa_min_pct",
+ "marshall_limit_stability_min_kg","marshall_limit_flow_min_mm",
+ "marshall_limit_flow_max_mm","marshall_limit_mq_min_kg_per_mm",
+ "asphalt_content_pct","dry_weight_g","ssd_weight_g","submerged_weight_g",
+ "stability_reading","flow_mm","gmb","gmm","vim_pct","vma_pct",
+ "vfa_pct","stability_kg","mq_kg_per_mm","average_sample_count",
+ "kao_pct","kao_range_min_pct","kao_range_max_pct",
+ "cost_material","cost_unit_price_rp_per_ton","cost_quantity_fraction",
+ "cost_quantity_kg_per_ton","cost_estimated_rp_per_ton","calculation_note",
+];
+const csvNumber=value=>{
+ if(value===null||value===undefined||value==="")return null;
+ const parsed=Number(value);
+ return Number.isFinite(parsed)?parsed:null;
+};
+const csvRawNumber=value=>{
+ const parsed=csvNumber(value);
+ return parsed===null&&value!==""&&value!==null&&value!==undefined
+  ?String(value)
+  :parsed;
+};
+const csvCell=value=>{
+ if(value===null||value===undefined)return"";
+ if(typeof value==="number"&&!Number.isFinite(value))return"";
+ let text=String(value);
+ if(/^\s*[=+\-@]/.test(text))text="'"+text;
+ return'"'+text.replace(/"/g,'""')+'"';
+};
+function exportRawCsv(){
+ const records=[];
+ const add=record=>records.push(record);
+ const rawProportions=S.p.slice(0,S.n).map(csvRawNumber);
+ const proportions=S.p.slice(0,S.n).map(value=>csvNumber(value)||0);
+ const proportionTotal=proportions.reduce((sum,value)=>sum+value,0);
+ const weight=parseFloat($("wt").value)||1000;
+ let priorPassing=100;
+ const gradationRows=S.rows.map((row,index)=>({
+  row,index,sieve:csvNumber(row.d),
+ })).sort((left,right)=>{
+  const leftSieve=left.sieve===null?-Infinity:left.sieve;
+  const rightSieve=right.sieve===null?-Infinity:right.sieve;
+  return rightSieve-leftSieve||left.index-right.index;
+ });
+ for(const item of gradationRows){
+  const {row,sieve}=item;
+  const fractions=LB.map((_,index)=>index<S.n?csvNumber(row.f[index]):null);
+  const completeFractions=fractions.slice(0,S.n).every(value=>value!==null);
+  const passing=sieve!==null&&sieve>0&&proportionTotal>0&&completeFractions
+   ?fractions.slice(0,S.n).reduce(
+    (sum,value,index)=>sum+value*proportions[index]/proportionTotal,0
+   )
+   :null;
+  const minimum=csvNumber(row.mn),maximum=csvNumber(row.mx);
+  const meets=passing===null?"":(
+   (minimum===null||passing>=minimum-1e-9)
+   &&(maximum===null||passing<=maximum+1e-9)
+  );
+  const retained=passing===null||priorPassing===null?null:priorPassing-passing;
+  if(sieve!==null&&sieve>0)priorPassing=passing;
+  add({
+   record_type:"gradation",
+   gradation_specification:S.sp,
+   fraction_count:S.n,
+   fraction_A_proportion_pct:rawProportions[0],
+   fraction_B_proportion_pct:rawProportions[1],
+   fraction_C_proportion_pct:rawProportions[2],
+   fraction_D_proportion_pct:rawProportions[3],
+   sieve_mm:csvRawNumber(row.d),
+   gradation_min_pct:csvRawNumber(row.mn),
+   gradation_max_pct:csvRawNumber(row.mx),
+   fraction_A_passing_pct:csvRawNumber(row.f[0]),
+   fraction_B_passing_pct:csvRawNumber(row.f[1]),
+   fraction_C_passing_pct:csvRawNumber(row.f[2]),
+   fraction_D_passing_pct:csvRawNumber(row.f[3]),
+   blend_passing_pct:passing,
+   gradation_meets_specification:meets,
+   retained_pct:retained,
+   cumulative_retained_pct:passing===null?null:100-passing,
+   retained_weight_g:retained===null?null:retained*weight/100,
+   total_blend_weight_g:weight,
+  });
+ }
+ if(priorPassing!==null&&gradationRows.some(item=>item.sieve!==null&&item.sieve>0)){
+  add({
+   record_type:"gradation_pan",
+   gradation_specification:S.sp,
+   fraction_count:S.n,
+   fraction_A_proportion_pct:rawProportions[0],
+   fraction_B_proportion_pct:rawProportions[1],
+   fraction_C_proportion_pct:rawProportions[2],
+   fraction_D_proportion_pct:rawProportions[3],
+   retained_pct:priorPassing,
+   cumulative_retained_pct:100,
+   retained_weight_g:priorPassing*weight/100,
+   total_blend_weight_g:weight,
+   calculation_note:"Material lolos ayakan terkecil (pan).",
+  });
+ }
+
+ const j=J(),jmf=GJM;
+ const jmfData={
+  jmf_target:j.tg,
+  jmf_group:csvRawNumber(j.kg),
+  jmf_asphalt_pct:csvRawNumber(j.ka),
+  jmf_total_weight_g:csvRawNumber(j.bt),
+  jmf_constant_k:csvRawNumber(j.k),
+ };
+ if(jmf){
+  Object.assign(jmfData,{
+    jmf_asphalt_pct:jmf.ka,
+    jmf_total_weight_g:jmf.bt,
+    jmf_coarse_pct:jmf.ca,
+    jmf_fine_pct:jmf.fa,
+    jmf_filler_pct:jmf.pan,
+    jmf_binder_pb_pct:0.035*jmf.ca+0.045*jmf.fa+0.18*jmf.pan+csvNumber(j.k),
+    jmf_asphalt_weight_g:jmf.as,
+    jmf_aggregate_weight_g:jmf.ag,
+  });
+ }
+ add({
+  record_type:"jmf_summary",
+  gradation_specification:S.sp,
+  ...jmfData,
+  calculation_note:jmf?"":"JMF belum dapat dihitung dari input saat ini.",
+ });
+
+ const marshall=MZ();
+ const marshallSettings={
+  marshall_specification:marshall.sp,
+  marshall_gsb:csvRawNumber(marshall.g.gsb),
+  marshall_gse:csvRawNumber(marshall.g.gse),
+  marshall_gb:csvRawNumber(marshall.g.gb),
+  marshall_stability_multiplier:csvRawNumber(marshall.g.pg),
+  marshall_limit_vim_min_pct:csvRawNumber(marshall.lim.vi1),
+  marshall_limit_vim_max_pct:csvRawNumber(marshall.lim.vi2),
+  marshall_limit_vma_min_pct:csvRawNumber(marshall.lim.vma),
+  marshall_limit_vfa_min_pct:csvRawNumber(marshall.lim.vfa),
+  marshall_limit_stability_min_kg:csvRawNumber(marshall.lim.st),
+  marshall_limit_flow_min_mm:csvRawNumber(marshall.lim.fl1),
+  marshall_limit_flow_max_mm:csvRawNumber(marshall.lim.fl2),
+  marshall_limit_mq_min_kg_per_mm:csvRawNumber(marshall.lim.mq),
+ };
+ const calculatedSamples=new Map(
+  (MZResult?.samples||[]).map(sample=>[sample.index,sample])
+ );
+ if(marshall.rows.length){
+  marshall.rows.forEach((sample,index)=>{
+   const calculated=calculatedSamples.get(index)||{};
+   add({
+    record_type:"marshall_sample",
+    ...marshallSettings,
+    marshall_sample_number:index+1,
+    asphalt_content_pct:csvRawNumber(sample.ka),
+    dry_weight_g:csvRawNumber(sample.a),
+    ssd_weight_g:csvRawNumber(sample.b),
+    submerged_weight_g:csvRawNumber(sample.c),
+    stability_reading:csvRawNumber(sample.st),
+    flow_mm:csvRawNumber(sample.fl),
+    gmb:calculated.gmb,
+    gmm:calculated.gmm,
+    vim_pct:calculated.vim,
+    vma_pct:calculated.vma,
+    vfa_pct:calculated.vfa,
+    stability_kg:calculated.st,
+    mq_kg_per_mm:calculated.mq,
+    ...jmfData,
+   });
+  });
+ }else{
+  add({record_type:"marshall_settings",...marshallSettings});
+ }
+ if(MZResult){
+  MZResult.averages.forEach(average=>{
+   add({
+    record_type:"marshall_average",
+    ...marshallSettings,
+    asphalt_content_pct:average.ka,
+    average_sample_count:average.n,
+    gmb:average.gmb,
+    vim_pct:average.vim,
+    vma_pct:average.vma,
+    vfa_pct:average.vfa,
+    stability_kg:average.st,
+    flow_mm:average.fl,
+    mq_kg_per_mm:average.mq,
+   });
+  });
+  add({
+   record_type:"marshall_kao",
+   ...marshallSettings,
+   kao_pct:MZResult.kao,
+   kao_range_min_pct:MZResult.range?.[0],
+   kao_range_max_pct:MZResult.range?.[1],
+   calculation_note:"KAO adalah titik tengah rentang kadar aspal yang memenuhi syarat.",
+  });
+ }
+
+ const materials=[
+  {key:"aspal",label:"Aspal",priceInput:"haspal",quantityKey:"asphalt"},
+  {key:"ca",label:"Agregat kasar",priceInput:"hca",quantityKey:"coarse"},
+  {key:"fa",label:"Agregat halus",priceInput:"hfa",quantityKey:"fine"},
+  {key:"filler",label:"Filler",priceInput:"hfiller",quantityKey:"filler"},
+ ];
+ const costEstimate=calculateCostEstimate(
+  jmf,materials.map(material=>$(material.priceInput).value)
+ );
+ materials.forEach(material=>{
+  const estimated=costEstimate.current;
+  const price=csvNumber($(material.priceInput).value);
+  const quantity=estimated?.quantities[material.quantityKey];
+  add({
+   record_type:"cost_material",
+   gradation_specification:S.sp,
+   ...jmfData,
+   cost_material:material.label,
+   cost_unit_price_rp_per_ton:csvRawNumber($(material.priceInput).value),
+   cost_quantity_fraction:quantity,
+   cost_quantity_kg_per_ton:quantity===undefined?null:quantity*1000,
+   cost_estimated_rp_per_ton:estimated?.costs[material.quantityKey],
+   calculation_note:costEstimate.error||"",
+  });
+ });
+ const totalCost=costEstimate.current?.total;
+ if(totalCost!==undefined){
+  add({
+   record_type:"cost_total",
+   gradation_specification:S.sp,
+   ...jmfData,
+   cost_estimated_rp_per_ton:totalCost,
+  });
+ }
+
+ const csv=[
+  CSV_COLUMNS.map(csvCell).join(","),
+  ...records.map(record=>CSV_COLUMNS.map(column=>csvCell(record[column])).join(",")),
+ ].join("\r\n");
+ const blob=new Blob(["\ufeff",csv],{type:"text/csv;charset=utf-8"});
+ saveF(`data-mentah-gradasi-${new Date().toISOString().slice(0,10)}.csv`,blob);
 }
 function exportXlsx(){
  if(typeof XLSX==="undefined")return xs("Pustaka Excel gagal dimuat. Muat ulang halaman.");
@@ -671,7 +923,7 @@ async function exportPng(){
   await saveF("grafik-hasil-lengkap.png",blob);
  }catch(e){xs("Gagal membuat gambar grafik: "+(e&&e.message?e.message:String(e)))}
 }
-$("dx").onclick=exportXlsx;$("dp").onclick=exportPng;
+$("dx").onclick=exportXlsx;$("dc").onclick=exportRawCsv;$("dp").onclick=exportPng;
 $("ib").oninput=e=>{const t=e.target,c=t.dataset.c;if(!c)return;const r=S.rows[+t.dataset.r];if(c[0]==="f")r.f[+c.slice(1)]=t.value;else r[c]=t.value;persist();refresh()};
 $("ib").onclick=e=>{const b=e.target.closest(".del");if(b){S.rows.splice(+b.dataset.x,1);persist();renderIn();refresh()}};
 $("pp").oninput=e=>{const k=e.target.dataset.p;if(k===undefined)return;S.p[+k]=e.target.value;persist();refresh()};
