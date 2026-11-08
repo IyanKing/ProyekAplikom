@@ -500,15 +500,18 @@ def find_kao(marshall):
     }
 
 
-def _chart_buffer(figure):
+def _chart_buffer(figure, dpi=160, image_format="png"):
     output = BytesIO()
-    figure.savefig(output, format="png", dpi=160, bbox_inches="tight")
+    save_options = {"format": image_format, "bbox_inches": "tight"}
+    if image_format == "png":
+        save_options["dpi"] = dpi
+    figure.savefig(output, **save_options)
     plt.close(figure)
     output.seek(0)
     return output
 
 
-def chart_gradation(gradation):
+def chart_gradation(gradation, dpi=160, image_format="png"):
     rows = [row for row in gradation["rows"] if row["P"] is not None]
     if not rows:
         return None
@@ -534,10 +537,10 @@ def chart_gradation(gradation):
     axis.grid(True, which="both", alpha=0.25)
     axis.legend(fontsize=8, ncol=3, loc="best")
     figure.tight_layout()
-    return _chart_buffer(figure)
+    return _chart_buffer(figure, dpi=dpi, image_format=image_format)
 
 
-def chart_marshall(metric, label, unit, marshall, kao_info):
+def chart_marshall(metric, label, unit, marshall, kao_info, dpi=160, image_format="png"):
     averages = [row for row in marshall["A"] if row[metric] is not None]
     if not averages:
         return None
@@ -562,7 +565,55 @@ def chart_marshall(metric, label, unit, marshall, kao_info):
     axis.grid(True, alpha=0.25)
     axis.legend(fontsize=7)
     figure.tight_layout()
-    return _chart_buffer(figure)
+    return _chart_buffer(figure, dpi=dpi, image_format=image_format)
+
+
+def chart_marshall_panel(marshall, kao_info, dpi=160, image_format="png"):
+    metrics = (
+        ("vim", "VIM", "%"),
+        ("vma", "VMA", "%"),
+        ("vfa", "VFA", "%"),
+        ("st", "Stabilitas", "kg"),
+        ("fl", "Flow", "mm"),
+        ("mq", "MQ", "kg/mm"),
+    )
+    figure, axes = plt.subplots(2, 3, figsize=(12, 7.5))
+    for axis, (metric, label, unit) in zip(axes.flat, metrics):
+        averages = [
+            row for row in marshall["A"]
+            if row[metric] is not None and np.isfinite(row[metric])
+        ]
+        if not averages:
+            axis.set_title(f"{label} ({unit}) — data tidak tersedia")
+            axis.set_axis_off()
+            continue
+
+        x_values = [row["ka"] for row in averages]
+        y_values = [row[metric] for row in averages]
+        axis.scatter(x_values, y_values, color="#b3261e", s=20, zorder=3, label="Rata-rata")
+        fit = kao_info["fits"].get(metric) if kao_info else None
+        if fit is not None and len(x_values) >= 2:
+            fit_x = np.linspace(min(x_values), max(x_values), 100)
+            axis.plot(fit_x, fit(fit_x), color="#0e6b78", linewidth=1.4, label="Regresi")
+        minimum, maximum = marshall["lims"].get(metric, (None, None))
+        if minimum is not None:
+            axis.axhline(minimum, color="#b3261e", linestyle="--", linewidth=0.8)
+        if maximum is not None:
+            axis.axhline(maximum, color="#b3261e", linestyle="--", linewidth=0.8)
+        if kao_info and kao_info.get("kao") is not None:
+            axis.axvline(kao_info["kao"], color="#c8400d", linestyle=":", linewidth=1.1)
+        axis.set_title(f"{label} ({unit})")
+        axis.set_xlabel("Kadar aspal (%)")
+        axis.grid(True, alpha=0.25)
+        axis.legend(fontsize=7)
+
+    kao = kao_info.get("kao") if kao_info else None
+    title = "Parameter Marshall terhadap Kadar Aspal"
+    if kao is not None:
+        title += f" — KAO = {kao:.2f}%"
+    figure.suptitle(title)
+    figure.tight_layout()
+    return _chart_buffer(figure, dpi=dpi, image_format=image_format)
 
 
 def _styles():
@@ -1216,6 +1267,64 @@ if selected_state is not None:
                 f"<thead><tr>{headers}</tr></thead><tbody>{body}</tbody>"
                 "</table></div>"
             )
+
+        st.subheader("Ekspor grafik terpisah")
+        st.caption(
+            "Unduh grafik untuk presentasi tanpa membuat laporan lengkap. "
+            "PNG cocok untuk gambar raster; SVG adalah format vektor."
+        )
+        export_columns = st.columns([1, 2])
+        with export_columns[0]:
+            export_dpi = st.selectbox(
+                "Resolusi PNG",
+                [150, 300, 600],
+                index=1,
+                help="300 DPI cocok untuk laporan cetak; 600 DPI untuk kebutuhan resolusi tinggi.",
+                key="chart_export_dpi",
+            )
+        export_format = st.radio(
+            "Format grafik",
+            ["PNG", "SVG"],
+            horizontal=True,
+            key="chart_export_format",
+        )
+        image_format = export_format.lower()
+        mime_type = "image/png" if image_format == "png" else "image/svg+xml"
+        image_suffix = f".{image_format}"
+        chart_stem = "".join(
+            char.lower() if char.isalnum() else "-"
+            for char in source_name
+        ).strip("-") or "gradasi"
+        date_stamp = datetime.now().strftime("%Y%m%d")
+        graph_columns = st.columns(2)
+        with graph_columns[0]:
+            gradation_image = chart_gradation(
+                gradation, dpi=export_dpi, image_format=image_format
+            )
+            if gradation_image is None:
+                st.warning("Data gradasi belum cukup untuk membuat grafik.")
+            else:
+                st.download_button(
+                    "Unduh grafik gradasi",
+                    data=gradation_image.getvalue(),
+                    file_name=f"grafik-gradasi-{chart_stem}-{date_stamp}{image_suffix}",
+                    mime=mime_type,
+                    key="download_gradation_chart",
+                )
+        with graph_columns[1]:
+            if marshall is None or not marshall["A"]:
+                st.info("Data Marshall belum cukup untuk membuat grafik.")
+            else:
+                marshall_image = chart_marshall_panel(
+                    marshall, kao_info, dpi=export_dpi, image_format=image_format
+                )
+                st.download_button(
+                    "Unduh grafik Marshall",
+                    data=marshall_image.getvalue(),
+                    file_name=f"grafik-marshall-{chart_stem}-{date_stamp}{image_suffix}",
+                    mime=mime_type,
+                    key="download_marshall_chart",
+                )
 
         project_column, author_column, location_column = st.columns(3)
         with project_column:

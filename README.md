@@ -42,3 +42,5 @@ jadi unduh cadangan secara berkala.
 Halaman Laporan menerima file JSON dari Kalkulator, menghitung ulang
 gradasi/JMF/Marshall yang tersedia, lalu menyediakan laporan PDF atau Word
 (.docx) berisi ringkasan, tabel, grafik, dan kesimpulan. Laporan juga dapat
+mengekspor grafik gradasi dan panel Marshall secara terpisah sebagai PNG
+(150, 300, atau 600 DPI) atau SVG.
