@@ -9,6 +9,7 @@ ui.py               pembantu tampilan
 beranda.py          halaman beranda
 kalkulator.py       halaman kalkulator
 data_tersimpan.py   perpustakaan file JSON data kalkulator
+db.py               penyimpanan riwayat desain SQLite
 laporan_pdf.py      pembuat laporan PDF dan Word dari data kalkulator
 cara_kerja.py       halaman panduan
 tentang.py          halaman tentang
@@ -30,6 +31,13 @@ masing-masing, lalu dimuat atau dihapus dari browser tersebut. Data ini tidak
 tersinkron ke perangkat lain. Data juga dapat diunduh sebagai JSON untuk
 ditinjau atau diunduh ulang melalui halaman Data Tersimpan; muat berkas JSON
 yang sama di Kalkulator untuk memulihkan data gradasi, JMF, dan Marshall.
+
+Halaman Data Tersimpan dapat menyimpan unggahan JSON ke riwayat SQLite lokal
+(`data/history.db`), lalu menampilkan, mengunduh, mencadangkan, atau menghapus
+desain tersebut. Riwayat SQLite berada di server dan dibagikan oleh pengguna
+aplikasi; jangan gunakan untuk data rahasia. Penyimpanan lokal Streamlit
+Community Cloud dapat hilang saat aplikasi dimulai ulang atau di-deploy ulang,
+jadi unduh cadangan secara berkala.
 
 Halaman Laporan menerima file JSON dari Kalkulator, menghitung ulang
 gradasi/JMF/Marshall yang tersedia, lalu menyediakan laporan PDF atau Word

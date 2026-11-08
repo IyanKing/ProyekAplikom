@@ -1,11 +1,15 @@
 from html import escape
 import json
 from datetime import datetime
+from pathlib import Path
+import re
+import sqlite3
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 
+import db
 import theme
 import ui
 
@@ -125,15 +129,24 @@ with switch_col:
 
 ui.html(theme.page_head(
     "Data tersimpan",
-    "Tinjau data gradasi, JMF, dan Marshall dari berkas yang tersimpan.",
+    "Tinjau berkas JSON dan simpan desain ke riwayat proyek di server.",
     "Perpustakaan data",
 ))
 st.markdown(
     """
-Unggah berkas **Unduh JSON** dari halaman Kalkulator. Berkas dapat dimuat
-kembali di Kalkulator untuk memulihkan data dan menghitung ulang hasilnya.
+Unggah berkas **Unduh JSON** dari halaman Kalkulator untuk meninjau atau
+menyimpannya ke riwayat proyek SQLite. Desain di riwayat dapat diunduh kembali
+untuk dimuat di Kalkulator.
 """
 )
+with st.expander("Penting tentang privasi dan ketahanan data"):
+    st.warning(
+        "Riwayat ini disimpan bersama di server aplikasi: pengguna lain yang "
+        "dapat membuka halaman ini juga dapat melihat, mengunduh, atau menghapus "
+        "desain. Jangan simpan data rahasia. Di Streamlit Community Cloud, "
+        "file SQLite dapat hilang saat aplikasi dimulai ulang atau di-deploy ulang; "
+        "unduh cadangan secara berkala."
+    )
 
 with st.container(key="saved_file_upload"):
     st.markdown("**Unggah satu atau beberapa file data (.json)**")
@@ -494,6 +507,138 @@ for index, uploaded_file in enumerate(uploaded_files or []):
 
 if parsed:
     st.success(f"{len(parsed)} file berhasil dibaca.")
+    st.subheader("Simpan desain ke riwayat")
+    selected_upload = st.selectbox(
+        "Pilih file yang akan disimpan",
+        range(len(parsed)),
+        format_func=lambda index: parsed[index][1],
+        key="history_upload_selection",
+    )
+    _, upload_name, upload_data, _ = parsed[selected_upload]
+    with st.form("save_design_to_history"):
+        design_name = st.text_input(
+            "Nama desain",
+            value=Path(upload_name).stem[:100],
+            max_chars=100,
+        )
+        design_notes = st.text_area(
+            "Catatan (opsional)",
+            max_chars=2000,
+            placeholder="Misalnya: sumber agregat atau catatan revisi.",
+        )
+        save_submitted = st.form_submit_button(
+            "Simpan ke riwayat",
+            type="primary",
+        )
+    if save_submitted:
+        try:
+            new_id = db.save_design(design_name, upload_data, design_notes)
+        except (OSError, sqlite3.Error, TypeError, ValueError) as error:
+            st.error(f"Desain tidak dapat disimpan: {error}")
+        else:
+            st.success(f"Desain berhasil disimpan dengan ID #{new_id}.")
+
+try:
+    db.init_db()
+    history = db.list_designs()
+except (OSError, sqlite3.Error) as error:
+    history = []
+    st.error(f"Riwayat SQLite tidak dapat dibuka: {error}")
+
+st.subheader("Riwayat desain")
+if not history:
+    st.info("Belum ada desain di riwayat. Unggah file JSON di atas lalu simpan.")
+else:
+    history_table = pd.DataFrame([
+        {
+            "ID": design["id"],
+            "Nama": design["name"],
+            "Spesifikasi": design["spec"] or "—",
+            "Fraksi": design["num_fractions"] or "—",
+            "Ayakan": design["num_sieves"],
+            "Dibuat (UTC)": design["created_at"],
+            "Catatan": design["notes"] or "—",
+        }
+        for design in history
+    ])
+    _show_table(history_table)
+
+    backup = []
+    try:
+        for design in history:
+            stored = db.get_design(design["id"])
+            if stored is None:
+                continue
+            backup.append({
+                "id": stored["id"],
+                "name": stored["name"],
+                "created_at": stored["created_at"],
+                "notes": stored["notes"],
+                "payload": stored["payload"],
+            })
+    except (OSError, sqlite3.Error, ValueError) as error:
+        st.error(f"Cadangan riwayat tidak dapat disiapkan: {error}")
+    else:
+        st.download_button(
+            "Unduh cadangan semua desain",
+            data=json.dumps(backup, ensure_ascii=False, indent=2),
+            file_name=f"cadangan-desain-{datetime.now().strftime('%Y%m%d')}.json",
+            mime="application/json",
+            disabled=not backup,
+            key="download_design_backup",
+        )
+
+    selected_design_id = st.selectbox(
+        "Pilih desain dari riwayat",
+        [design["id"] for design in history],
+        format_func=lambda design_id: (
+            f"#{design_id} — "
+            f"{next(item['name'] for item in history if item['id'] == design_id)}"
+        ),
+        key="history_design_selection",
+    )
+    try:
+        selected_design = db.get_design(selected_design_id)
+    except (OSError, sqlite3.Error, ValueError) as error:
+        selected_design = None
+        st.error(f"Desain tidak dapat dibaca: {error}")
+
+    if selected_design is not None:
+        safe_name = re.sub(
+            r"[^A-Za-z0-9._-]+", "-", selected_design["name"]
+        ).strip(".-") or "desain"
+        history_columns = st.columns(2)
+        with history_columns[0]:
+            st.download_button(
+                "Unduh desain JSON",
+                data=json.dumps(
+                    selected_design["payload"], ensure_ascii=False, indent=2
+                ),
+                file_name=f"{safe_name}.json",
+                mime="application/json",
+                key=f"download_design_{selected_design_id}",
+            )
+        with history_columns[1]:
+            confirm_delete = st.checkbox(
+                "Saya yakin ingin menghapus desain ini",
+                key=f"confirm_delete_design_{selected_design_id}",
+            )
+            if st.button(
+                "Hapus desain",
+                disabled=not confirm_delete,
+                key=f"delete_design_{selected_design_id}",
+            ):
+                try:
+                    deleted = db.delete_design(selected_design_id)
+                except (OSError, sqlite3.Error) as error:
+                    st.error(f"Desain tidak dapat dihapus: {error}")
+                else:
+                    if deleted:
+                        st.success("Desain berhasil dihapus.")
+                        st.rerun()
+                    else:
+                        st.warning("Desain sudah tidak ada di riwayat.")
+
     summary = []
     for _, name, data, _ in parsed:
         fractions = data.get("p")
@@ -614,7 +759,7 @@ if parsed:
                 mime="application/json",
                 key=f"download_{index}",
             )
-else:
+if not parsed:
     ui.html(
         '<div class="gx-empty-state"><span class="gx-empty-icon">ⓘ</span>'
         "<p>Belum ada file yang diunggah. Pilih berkas JSON di atas untuk melihat "
