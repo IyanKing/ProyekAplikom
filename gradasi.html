@@ -143,6 +143,13 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 <section class="c" id="cost">
 <h2>Analisis biaya campuran</h2>
 <p class="h">Masukkan harga satuan material per ton. Estimasi biaya dihitung per ton campuran berdasarkan komposisi JMF aktif.</p>
+<div class="bt"><button class="o" id="loadCostExample" type="button">Muat contoh harga Magelang</button></div>
+<p class="h">Contoh indikatif untuk simulasi, bukan rata-rata harga marketplace terverifikasi dan belum termasuk ongkos kirim. Cek harga terbaru sesuai mutu dan lokasi:
+<a href="https://www.tokopedia.com/search?st=product&q=aspal%20penetrasi%2060%2F70" target="_blank" rel="noopener noreferrer">aspal</a>,
+<a href="https://www.tokopedia.com/search?st=product&q=batu%20split%20per%20ton" target="_blank" rel="noopener noreferrer">agregat kasar</a>,
+<a href="https://www.tokopedia.com/search?st=product&q=pasir%20beton%20per%20ton" target="_blank" rel="noopener noreferrer">agregat halus</a>, dan
+<a href="https://www.tokopedia.com/search?st=product&q=mineral%20filler%20aspal" target="_blank" rel="noopener noreferrer">filler</a>.
+</p>
 <div class="g2">
 <label>Harga aspal (Rp/ton)<input id="haspal" type="number" step="any" min="0" inputmode="decimal"></label>
 <label>Harga agregat kasar (Rp/ton)<input id="hca" type="number" step="any" min="0" inputmode="decimal"></label>
@@ -408,6 +415,16 @@ function renderCostInputs(){
  const cost=costConfig();
  costPrices.forEach(([input,key])=>{$(input).value=cost[key]??""});
 }
+const costExample={aspal:12000000,ca:300000,fa:250000,filler:500000};
+function loadCostExample(){
+ const cost=costConfig();
+ costPrices.forEach(([input,key])=>{
+  cost[key]=String(costExample[key]);
+  $(input).value=cost[key];
+ });
+ persist();
+ renderCost();
+}
 function renderCost(){
  const result=$("costResult"),message=$("costMsg");
  if(!GJM){
@@ -520,6 +537,7 @@ $("cost").oninput=event=>{
  persist();
  renderCost();
 };
+$("loadCostExample").onclick=loadCostExample;
 $("ck").onclick=()=>{
  if(!GK)return;
  const ta=$("tk");ta.value=GK.map(x=>x.join("\t")).join("\n");ta.hidden=false;ta.select();

@@ -34,7 +34,10 @@ ditinjau atau diunduh ulang melalui halaman Data Tersimpan; muat berkas JSON
 yang sama di Kalkulator untuk memulihkan data gradasi, JMF, dan Marshall.
 Kalkulator juga dapat menghitung estimasi biaya material per ton campuran
 dari harga aspal, agregat kasar, agregat halus, dan filler. Harga disimpan
-bersama data kalkulator di browser dan dalam ekspor JSON.
+bersama data kalkulator di browser dan dalam ekspor JSON. Tombol “Muat contoh
+harga Magelang” mengisi angka indikatif untuk simulasi, bukan rata-rata harga
+marketplace yang terverifikasi atau penawaran terkini; harga perlu dicek ulang
+sesuai mutu material, pemasok, dan ongkos kirim.
 
 Halaman Data Tersimpan dapat menyimpan unggahan JSON ke riwayat SQLite lokal
 (`data/history.db`), lalu menampilkan, mengunduh, mencadangkan, atau menghapus
