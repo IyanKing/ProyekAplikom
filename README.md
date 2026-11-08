@@ -32,6 +32,9 @@ masing-masing, lalu dimuat atau dihapus dari browser tersebut. Data ini tidak
 tersinkron ke perangkat lain. Data juga dapat diunduh sebagai JSON untuk
 ditinjau atau diunduh ulang melalui halaman Data Tersimpan; muat berkas JSON
 yang sama di Kalkulator untuk memulihkan data gradasi, JMF, dan Marshall.
+Kalkulator juga dapat menghitung estimasi biaya material per ton campuran
+dari harga aspal, agregat kasar, agregat halus, dan filler. Harga disimpan
+bersama data kalkulator di browser dan dalam ekspor JSON.
 
 Halaman Data Tersimpan dapat menyimpan unggahan JSON ke riwayat SQLite lokal
 (`data/history.db`), lalu menampilkan, mengunduh, mencadangkan, atau menghapus

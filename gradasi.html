@@ -140,6 +140,18 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 <div class="bt"><button class="o" id="ck">Salin tabel 4 kelompok (untuk Excel)</button></div>
 <textarea id="tk" hidden readonly aria-label="Tabel empat kelompok"></textarea>
 </section>
+<section class="c" id="cost">
+<h2>Analisis biaya campuran</h2>
+<p class="h">Masukkan harga satuan material per ton. Estimasi biaya dihitung per ton campuran berdasarkan komposisi JMF aktif.</p>
+<div class="g2">
+<label>Harga aspal (Rp/ton)<input id="haspal" type="number" step="any" min="0" inputmode="decimal"></label>
+<label>Harga agregat kasar (Rp/ton)<input id="hca" type="number" step="any" min="0" inputmode="decimal"></label>
+<label>Harga agregat halus (Rp/ton)<input id="hfa" type="number" step="any" min="0" inputmode="decimal"></label>
+<label>Harga filler (Rp/ton)<input id="hfiller" type="number" step="any" min="0" inputmode="decimal"></label>
+</div>
+<div id="costResult" style="margin-top:12px"></div>
+<p class="h" id="costMsg" role="status" aria-live="polite"></p>
+</section>
 <section class="c" id="mz">
 <h2>Uji Marshall dan kadar aspal optimum</h2>
 <div class="g2"><label>Spesifikasi<select id="mzp"><option>AC-WC</option><option>AC-BC</option><option>AC-Base</option><option>Kustom</option></select></label></div>
@@ -328,10 +340,11 @@ function refresh0(){
 const JD={kg:"2",ka:"5.5",k:"0.75",bt:"1200",tg:"mid"},KAS={1:5,2:5.5,3:6,4:6.5};
 const J=()=>S.jm||(S.jm={...JD});
 let GJ=null;
+let GJM=null;
 function jmInit(){const j=J();$("kg").value=j.kg;$("ka").value=j.ka;$("kk").value=j.k;$("bt").value=j.bt;$("tg").value=j.tg}
 function jmf(){
  const j=J();
- const msg=t=>{$("js").innerHTML="";$("jt").innerHTML="";$("jn").textContent=t;GJ=null;$("kh").innerHTML="";$("kb").innerHTML="";GK=null};
+ const msg=t=>{$("js").innerHTML="";$("jt").innerHTML="";$("jn").textContent=t;GJ=null;$("kh").innerHTML="";$("kb").innerHTML="";GK=null;GJM=null;renderCost()};
  let R;
  if(j.tg==="blend"){if(!G)return msg("Lengkapi data fraksi dan proporsi di atas dulu untuk memakai target dari campuran.");R=G.res}
  else{
@@ -345,6 +358,7 @@ function jmf(){
  const T=R.map(r=>{const t=prev-r.P;prev=r.P;return{d:r.d,t}}),pan=prev;
  const ca=T.filter(x=>x.d>=4.75).reduce((s,x)=>s+x.t,0),fa=T.filter(x=>x.d<4.75).reduce((s,x)=>s+x.t,0);
  const pb=0.035*ca+0.045*fa+0.18*pan+K,ag=BT*(1-KA/100),as=BT*KA/100;
+ GJM={ca,fa,pan,ka:KA,bt:BT,ag,as};
  $("js").innerHTML=[["Pb (rumus)",nf(pb)+"%","dibulatkan 0,5%: "+nf(Math.round(pb*2)/2)+"%"],["Aspal Pen 60/70 ("+nf(KA)+"%)",nf(as)+" g",""],["Agregat",nf(ag)+" g","dari total "+nf(BT)+" g"],["%CA / %FA / %FF",nf(ca)+" / "+nf(fa)+" / "+nf(pan),""]].map(c=>`<div class="k"><span>${c[0]}</span><b>${c[1]}</b><small style="color:var(--mu)">${c[2]}</small></div>`).join("");
  GJ=[];let h="";
  const fm=v=>typeof v==="number"?nf(v):v,fr=v=>typeof v==="number"?rd(v):v;
@@ -359,6 +373,7 @@ function jmf(){
  $("jt").innerHTML=h;
  $("jn").textContent=`Pb = 0,035(%CA) + 0,045(%FA) + 0,18(%FF) + K. Target gradasi: ${j.tg==="mid"?"nilai tengah spesifikasi":"campuran fraksi"}. Kadar aspal mengikuti kelompok (bisa diubah).`;
  kmp(R,T,pan,BT,j);
+ renderCost();
 }
 let GK=null;
 function kmp(R,T,pan,BT,j){
@@ -378,6 +393,133 @@ function kmp(R,T,pan,BT,j){
  row("Total benda uji","",gs.map(()=>BT),1);
  $("kb").innerHTML=h;
 }
+const costPrices=[
+ ["haspal","aspal"],
+ ["hca","ca"],
+ ["hfa","fa"],
+ ["hfiller","filler"],
+];
+const fmtRp=value=>"Rp "+Math.round(value).toLocaleString("id-ID");
+function costConfig(){
+ if(!S.cost||typeof S.cost!=="object"||Array.isArray(S.cost))S.cost={};
+ return S.cost;
+}
+function renderCostInputs(){
+ const cost=costConfig();
+ costPrices.forEach(([input,key])=>{$(input).value=cost[key]??""});
+}
+function renderCost(){
+ const result=$("costResult"),message=$("costMsg");
+ if(!GJM){
+  result.innerHTML="";
+  message.textContent="Hitung JMF terlebih dahulu agar komposisi campuran tersedia.";
+  return;
+ }
+ const parsed=costPrices.map(([input])=>{
+  const raw=$(input).value;
+  return raw===""?null:Number(raw);
+ });
+ if(parsed.some(value=>value===null)){
+  result.innerHTML="";
+  message.textContent="Isi keempat harga satuan (Rp/ton) untuk menghitung biaya.";
+  return;
+ }
+ if(parsed.some(value=>!Number.isFinite(value)||value<0)){
+  result.innerHTML="";
+  message.textContent="Harga harus berupa angka nol atau lebih.";
+  return;
+ }
+ const [asphaltPrice,coarsePrice,finePrice,fillerPrice]=parsed;
+ const fractions=[GJM.ca,GJM.fa,GJM.pan];
+ if(
+  fractions.some(value=>!Number.isFinite(value)||value< -0.01)
+  ||Math.abs(fractions.reduce((sum,value)=>sum+value,0)-100)>0.01
+ ){
+  result.innerHTML="";
+  message.textContent="Komposisi JMF menghasilkan fraksi agregat negatif atau tidak berjumlah 100%. Periksa kembali target gradasi.";
+  return;
+ }
+ message.textContent="";
+
+ const costsForBinder=asphaltPercent=>{
+  const asphaltFraction=asphaltPercent/100;
+  const aggregateFraction=1-asphaltFraction;
+  const coarseFraction=Math.max(0,GJM.ca)/100;
+  const fineFraction=Math.max(0,GJM.fa)/100;
+  const fillerFraction=Math.max(0,GJM.pan)/100;
+  const quantities={
+   asphalt:asphaltFraction,
+   coarse:aggregateFraction*coarseFraction,
+   fine:aggregateFraction*fineFraction,
+   filler:aggregateFraction*fillerFraction,
+  };
+  const costs={
+   asphalt:quantities.asphalt*asphaltPrice,
+   coarse:quantities.coarse*coarsePrice,
+   fine:quantities.fine*finePrice,
+   filler:quantities.filler*fillerPrice,
+  };
+  return{
+   quantities,
+   costs,
+   total:Object.values(costs).reduce((sum,value)=>sum+value,0),
+  };
+ };
+ const current=costsForBinder(GJM.ka);
+ const binderRates=[1,2,3,4].map(group=>KAS[group]);
+ if(!binderRates.some(rate=>Math.abs(rate-GJM.ka)<0.001))binderRates.push(GJM.ka);
+ binderRates.sort((a,b)=>a-b);
+ const options=binderRates.map(rate=>({rate,...costsForBinder(rate)}));
+ if(
+  !Number.isFinite(current.total)
+  ||Object.values(current.costs).some(value=>!Number.isFinite(value))
+  ||options.some(option=>!Number.isFinite(option.total))
+ ){
+  result.innerHTML="";
+  message.textContent="Hasil biaya terlalu besar untuk dihitung. Periksa kembali harga yang dimasukkan.";
+  return;
+ }
+ const fmtShare=value=>nf(current.total>0?100*value/current.total:0);
+ const amounts=[
+  ["Aspal","asphalt"],
+  ["Agregat kasar","coarse"],
+  ["Agregat halus","fine"],
+  ["Filler","filler"],
+ ];
+ const breakdown=amounts.map(([label,key])=>`
+  <div class="k"><span>Biaya ${label.toLocaleLowerCase("id-ID")}</span>
+  <b>${fmtRp(current.costs[key])}</b>
+  <small>${nf(current.quantities[key]*1000)} kg · ${fmtShare(current.costs[key])}% biaya</small></div>
+ `).join("");
+ const rows=options.map(option=>{
+  const active=Math.abs(option.rate-GJM.ka)<0.001;
+  return `<tr${active?' style="font-weight:600;background:var(--sf)"':""}>
+   <td>${nf(option.rate)}</td><td class="r">${fmtRp(option.total)}</td>
+  </tr>`;
+ }).join("");
+ result.innerHTML=`
+  <div class="sl" style="margin:0 0 12px">
+   <div class="g">
+    <div class="k"><span>Estimasi biaya campuran per ton</span>
+    <b>${fmtRp(current.total)}</b><small>pada kadar aspal ${nf(GJM.ka)}%</small></div>
+    ${breakdown}
+   </div>
+  </div>
+  <div class="w"><table>
+   <thead><tr><th>Kadar aspal (%)</th><th class="r">Estimasi biaya campuran (Rp/ton)</th></tr></thead>
+   <tbody>${rows}</tbody>
+  </table></div>
+  <p class="h" style="margin-top:6px">Baris tebal adalah kadar aspal JMF aktif. Tabel hanya estimasi biaya material, bukan optimasi biaya terhadap seluruh batas spesifikasi.</p>
+ `;
+}
+$("cost").oninput=event=>{
+ const input=event.target;
+ const price=costPrices.find(([id])=>id===input.id);
+ if(!price)return;
+ costConfig()[price[1]]=input.value;
+ persist();
+ renderCost();
+};
 $("ck").onclick=()=>{
  if(!GK)return;
  const ta=$("tk");ta.value=GK.map(x=>x.join("\t")).join("\n");ta.hidden=false;ta.select();
@@ -802,6 +944,11 @@ function parseState(j){
   if(!record(j.jm)||!Object.values(j.jm).every(value))throw new Error("Pengaturan JMF tidak valid.");
   state.jm={...JD,...j.jm};
  }
+ if(j.cost!==undefined){
+  const keys=["aspal","ca","fa","filler"];
+  if(!record(j.cost)||keys.some(k=>j.cost[k]!==undefined&&!value(j.cost[k])))throw new Error("Data biaya tidak valid.");
+  state.cost=Object.fromEntries(keys.map(k=>[k,j.cost[k]===undefined?"":String(j.cost[k])]));
+ }
  if(j.mz!==undefined){
   if(!record(j.mz)||!Array.isArray(j.mz.rows)||!j.mz.rows.every(r=>record(r)&&Object.values(r).every(value)))throw new Error("Data Marshall tidak valid.");
   if(j.mz.sp!==undefined&&typeof j.mz.sp!=="string")throw new Error("Spesifikasi Marshall tidak valid.");
@@ -847,7 +994,7 @@ function init(){
  $("sp").innerHTML=Object.keys(PS).map(k=>`<option>${k}</option>`).join("")+"<option>Kustom</option>";
  $("sp").value=PS[S.sp]?S.sp:"Kustom";
  $("nf").value=String(S.n);jmInit();mzInit();
- renderIn();renderP();refresh();
+ renderIn();renderP();renderCostInputs();refresh();
 }
 init();
 if(fresh)$("go").click();
