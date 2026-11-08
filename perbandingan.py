@@ -13,6 +13,7 @@ import streamlit as st
 import db
 import theme
 import ui
+from compute import compute_gradation, compute_marshall
 
 
 COUNT_FIELDS = (
@@ -69,128 +70,6 @@ def _read_uploaded_file(uploaded_file):
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError(f"JSON tidak dapat dibaca: {error}") from error
     return _validate_state(state)
-
-
-def _compute_gradation(state):
-    count = state["n"]
-    proportions = [_number(value) for value in state["p"][:count]]
-    total = sum(proportions)
-    weights = [value / total for value in proportions]
-    rows = []
-    for row in state["rows"]:
-        sieve = _number(row.get("d"))
-        if sieve is None or sieve <= 0:
-            continue
-        fraction_values = row.get("f")
-        if not isinstance(fraction_values, list):
-            fraction_values = []
-        fractions = [
-            _number(fraction_values[index]) if index < len(fraction_values) else None
-            for index in range(count)
-        ]
-        minimum = _number(row.get("mn"))
-        maximum = _number(row.get("mx"))
-        passing = (
-            sum(value * weight for value, weight in zip(fractions, weights))
-            if all(value is not None for value in fractions)
-            else None
-        )
-        meets = passing is not None and (
-            (minimum is None or passing >= minimum - 1e-9)
-            and (maximum is None or passing <= maximum + 1e-9)
-        )
-        rows.append({
-            "d": sieve,
-            "mn": minimum,
-            "mx": maximum,
-            "f": fractions,
-            "P": passing,
-            "ok": meets,
-        })
-    rows.sort(key=lambda row: row["d"], reverse=True)
-    return {"n": count, "p": proportions, "rows": rows}
-
-
-def _compute_marshall(state):
-    marshall = state.get("mz")
-    if not isinstance(marshall, dict):
-        return None
-    gravity = marshall.get("g")
-    gravity = gravity if isinstance(gravity, dict) else {}
-    bulk = _number(gravity.get("gsb"))
-    effective = _number(gravity.get("gse"))
-    asphalt = _number(gravity.get("gb"))
-    multiplier = _number(gravity.get("pg")) or 1.0
-    if not (bulk and effective and asphalt and bulk > 0 and effective > 0 and asphalt > 0):
-        return None
-
-    samples = []
-    raw_samples = marshall.get("rows")
-    if not isinstance(raw_samples, list):
-        return None
-    for row in raw_samples:
-        if not isinstance(row, dict):
-            continue
-        asphalt_percent = _number(row.get("ka"))
-        dry = _number(row.get("a"))
-        ssd = _number(row.get("b"))
-        immersed = _number(row.get("c"))
-        stability = _number(row.get("st"))
-        flow = _number(row.get("fl"))
-        if (
-            asphalt_percent is None or not 0 <= asphalt_percent < 100
-            or dry is None or dry <= 0
-            or ssd is None or immersed is None or ssd <= immersed
-        ):
-            continue
-        denominator = (100 - asphalt_percent) / effective + asphalt_percent / asphalt
-        if denominator <= 0:
-            continue
-        gmb = dry / (ssd - immersed)
-        gmm = 100 / denominator
-        vim = 100 * (gmm - gmb) / gmm
-        vma = 100 - gmb * (100 - asphalt_percent) / bulk
-        vfa = 100 * (vma - vim) / vma if vma else None
-        stability_result = stability * multiplier if stability is not None else None
-        samples.append({
-            "ka": asphalt_percent,
-            "gmb": gmb,
-            "vim": vim,
-            "vma": vma,
-            "vfa": vfa,
-            "st": stability_result,
-            "fl": flow,
-            "mq": (
-                stability_result / flow
-                if stability_result is not None and flow is not None and flow != 0
-                else None
-            ),
-        })
-    if not samples:
-        return None
-
-    grouped = {}
-    for sample in samples:
-        grouped.setdefault(round(sample["ka"], 3), []).append(sample)
-    averages = []
-    for asphalt_percent, group in sorted(grouped.items()):
-        average = {"ka": asphalt_percent, "n": len(group)}
-        for _, field in COUNT_FIELDS:
-            values = [sample[field] for sample in group if sample[field] is not None]
-            average[field] = sum(values) / len(values) if values else None
-        averages.append(average)
-
-    limits_data = marshall.get("lim")
-    limits_data = limits_data if isinstance(limits_data, dict) else {}
-    limits = {
-        "vim": (_number(limits_data.get("vi1")), _number(limits_data.get("vi2"))),
-        "vma": (_number(limits_data.get("vma")), None),
-        "vfa": (_number(limits_data.get("vfa")), None),
-        "st": (_number(limits_data.get("st")), None),
-        "fl": (_number(limits_data.get("fl1")), _number(limits_data.get("fl2"))),
-        "mq": (_number(limits_data.get("mq")), None),
-    }
-    return {"A": averages, "lims": limits}
 
 
 def _format(value, digits=2):
@@ -375,10 +254,10 @@ if state_a is None or state_b is None:
     st.stop()
 
 try:
-    gradation_a = _compute_gradation(state_a)
-    gradation_b = _compute_gradation(state_b)
-    marshall_a = _compute_marshall(state_a)
-    marshall_b = _compute_marshall(state_b)
+    gradation_a = compute_gradation(state_a)
+    gradation_b = compute_gradation(state_b)
+    marshall_a = compute_marshall(state_a)
+    marshall_b = compute_marshall(state_b)
 except (ArithmeticError, KeyError, TypeError, ValueError) as error:
     st.error(f"Data desain tidak dapat dihitung: {error}")
     st.stop()
