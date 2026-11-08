@@ -10,6 +10,7 @@ beranda.py          halaman beranda
 kalkulator.py       halaman kalkulator
 data_tersimpan.py   perpustakaan file JSON data kalkulator
 db.py               penyimpanan riwayat desain SQLite
+perbandingan.py     perbandingan dua desain gradasi dan Marshall
 laporan_pdf.py      pembuat laporan PDF dan Word dari data kalkulator
 cara_kerja.py       halaman panduan
 tentang.py          halaman tentang
@@ -44,3 +45,8 @@ gradasi/JMF/Marshall yang tersedia, lalu menyediakan laporan PDF atau Word
 (.docx) berisi ringkasan, tabel, grafik, dan kesimpulan. Laporan juga dapat
 mengekspor grafik gradasi dan panel Marshall secara terpisah sebagai PNG
 (150, 300, atau 600 DPI) atau SVG.
+
+Halaman Perbandingan menerima dua file JSON atau dua desain dari Riwayat
+SQLite, lalu menampilkan kurva gradasi, tabel gradasi, selisih persen lolos,
+dan hasil Marshall berdampingan. Status dihitung terhadap batas pada tiap
+desain; aplikasi tidak memberi verdict pemenang otomatis.
