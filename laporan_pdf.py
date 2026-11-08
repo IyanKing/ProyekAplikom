@@ -273,6 +273,59 @@ def compute_gradation(state):
     return {"n": count, "p": proportions, "w": weights, "rows": rows}
 
 
+def validate_data_warnings(state, grad):
+    """Return non-blocking warnings for suspicious gradation and Marshall data."""
+    warnings = []
+    rows = grad["rows"]
+    for fraction_index in range(grad["n"]):
+        for coarse, fine in zip(rows, rows[1:]):
+            coarse_value = _number(coarse["f"][fraction_index])
+            fine_value = _number(fine["f"][fraction_index])
+            if (
+                coarse_value is not None
+                and fine_value is not None
+                and fine_value > coarse_value + 0.01
+            ):
+                warnings.append(
+                    f"Fraksi {chr(65 + fraction_index)}: % lolos di ayakan "
+                    f"{fine['d']:g} mm ({fine_value:.2f}%) lebih besar dari "
+                    f"ayakan yang lebih kasar {coarse['d']:g} mm "
+                    f"({coarse_value:.2f}%)."
+                )
+
+    total_proportion = sum(grad["p"])
+    if total_proportion > 0 and abs(total_proportion - 100) > 0.5:
+        warnings.append(
+            f"Total proporsi fraksi = {total_proportion:.2f}% "
+            "(seharusnya 100%). Hasil tetap dihitung proporsional."
+        )
+    if any(proportion < 0 for proportion in grad["p"]):
+        warnings.append("Ada proporsi fraksi bernilai negatif.")
+
+    marshall = state.get("mz")
+    marshall_rows = marshall.get("rows", []) if isinstance(marshall, dict) else []
+    if isinstance(marshall_rows, list):
+        for index, row in enumerate(marshall_rows):
+            if not isinstance(row, dict):
+                continue
+            dry = _number(row.get("a"))
+            ssd = _number(row.get("b"))
+            flow = _number(row.get("fl"))
+            if (
+                dry is not None and ssd is not None
+                and dry > 0 and ssd > 0 and ssd < dry - 0.01
+            ):
+                warnings.append(
+                    f"Benda uji #{index + 1}: berat SSD ({ssd:.1f} g) lebih "
+                    f"kecil dari berat kering ({dry:.1f} g)."
+                )
+            if flow is not None and flow <= 0:
+                warnings.append(
+                    f"Benda uji #{index + 1}: Flow = {flow:.2f} mm (harus > 0)."
+                )
+    return warnings
+
+
 def compute_jmf(state, grad):
     config = state.get("jm")
     if not isinstance(config, dict):
@@ -1122,6 +1175,14 @@ if selected_state is not None:
         jmf = compute_jmf(selected_state, gradation)
         marshall = compute_marshall(selected_state)
         kao_info = find_kao(marshall)
+        warnings = validate_data_warnings(selected_state, gradation)
+        if warnings:
+            with st.expander(
+                f"⚠ {len(warnings)} peringatan pada data (klik untuk melihat)",
+                expanded=False,
+            ):
+                for warning in warnings:
+                    st.warning(warning)
         failed = [row for row in gradation["rows"] if not row["ok"]]
         st.divider()
         st.subheader("Pratinjau laporan")

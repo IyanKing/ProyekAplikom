@@ -27,6 +27,11 @@ button.o{background:var(--sf);color:var(--tx)}
 .bt{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .h{color:var(--mu);font-size:.85rem;margin:8px 0}
 .er{color:var(--er);margin:8px 0 0}
+.warn{color:var(--cr);margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--cr);background:var(--sf);border-radius:3px;font-size:.88rem;line-height:1.45}
+.warn:empty{display:none}
+.warn b{display:block;margin-bottom:4px;font-family:"Barlow Condensed",sans-serif;font-size:.95rem;letter-spacing:.02em}
+.warn ul{margin:4px 0 0 16px;padding:0}
+.warn li{margin:2px 0}
 .w{overflow-x:auto;margin-top:12px}
 table{width:100%;border-collapse:collapse;font-size:.9rem}
 th,td{padding:6px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
@@ -82,6 +87,7 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 <p class="h" id="savedStatus" role="status" aria-live="polite">Data yang disimpan di sini hanya tersedia di browser dan perangkat ini.</p>
 <p class="h">Isi % lolos tiap fraksi (A paling kasar). Batas spesifikasi mengacu pada Spesifikasi Umum Bina Marga 2018 dan bisa diedit; cocokkan dengan soal atau spesifikasi yang Anda pakai.</p>
 <p class="er" id="err" role="alert"></p>
+<p class="warn" id="wrn" role="status"></p>
 </section>
 
 <section class="c">
@@ -143,6 +149,7 @@ svg text{fill:var(--mu);font-size:11px;font-family:inherit}
 <div class="bt"><button class="o" id="mar">Tambah benda uji</button><button class="o" id="mex">Muat contoh (ilustrasi)</button></div>
 <p class="h">Satu baris per benda uji; KA yang sama otomatis dirata-ratakan. Stabilitas = pembacaan × pengali (isi 1 jika sudah dalam kg). Gse = (Gsb + Gsa) / 2 bila hanya ada BJ bulk dan semu. Batas mengacu pada Spesifikasi Umum Bina Marga 2018 (Laston); sesuaikan dengan spesifikasi dosen. Data contoh hanya ilustrasi, bukan data laboratorium.</p>
 <p class="er" id="mze"></p>
+<p class="warn" id="mzw" role="status"></p>
 <div id="mzo" hidden>
 <div class="sl" style="margin-top:12px"><div class="g" id="mzk"></div></div>
 <div class="w"><table><thead><tr><th>KA (%)</th><th class="r">n</th><th class="r">Gmb</th><th class="r">VIM (%)</th><th class="r">VMA (%)</th><th class="r">VFA (%)</th><th class="r">Stabilitas (kg)</th><th class="r">Flow (mm)</th><th class="r">MQ (kg/mm)</th></tr></thead><tbody id="mzt"></tbody></table></div>
@@ -182,6 +189,47 @@ try{const j=JSON.parse(localStorage.getItem("grad_s")||"null");if(j&&Array.isArr
 function sample(){const r=mkRows("AC-WC");r.forEach((x,i)=>{x.f=SF[i].map(String).concat([""])});return{sp:"AC-WC",n:3,rows:r,p:eq(3)}}
 if(!S){S=sample();fresh=true}
 const persist=()=>{try{localStorage.setItem("grad_s",JSON.stringify(S))}catch(e){}};
+
+function validateGradationOrder(rows){
+ const warns=[];
+ const sorted=rows.slice().sort((a,b)=>b.d-a.d);
+ for(let k=0;k<S.n;k++){
+  for(let i=1;i<sorted.length;i++){
+   const prev=sorted[i-1].f[k],cur=sorted[i].f[k];
+   if(isFinite(prev)&&isFinite(cur)&&cur>prev+0.01){
+    warns.push(`Fraksi ${LB[k]}: % lolos di ayakan ${sv(sorted[i].d)} mm (${nf(cur)}%) lebih besar dari ayakan yang lebih kasar ${sv(sorted[i-1].d)} mm (${nf(prev)}%). Seharusnya turun atau sama.`);
+   }
+  }
+ }
+ return warns;
+}
+
+function validateProportions(proportions){
+ const warns=[];
+ const values=proportions.map(v=>parseFloat(v));
+ const total=values.reduce((sum,value)=>sum+(isFinite(value)?value:0),0);
+ if(total>0&&Math.abs(total-100)>0.5){
+  warns.push(`Total proporsi fraksi = ${nf(total)}%. Seharusnya 100%. Hasil tetap dihitung proporsional, tapi periksa kembali input Anda.`);
+ }
+ if(values.some(value=>isFinite(value)&&value<0)){
+  warns.push("Ada proporsi fraksi bernilai negatif. Nilai proporsi tidak boleh negatif.");
+ }
+ return warns;
+}
+
+function validateMarshall(rows){
+ const warns=[];
+ rows.forEach((r,i)=>{
+  const dry=parseFloat(r.a),ssd=parseFloat(r.b),flow=parseFloat(r.fl);
+  if(isFinite(dry)&&isFinite(ssd)&&dry>0&&ssd>0&&ssd<dry-0.01){
+   warns.push(`Benda uji #${i+1}: berat SSD (${nf(ssd)} g) lebih kecil dari berat kering (${nf(dry)} g). SSD harus ≥ kering.`);
+  }
+  if(isFinite(flow)&&flow<=0){
+   warns.push(`Benda uji #${i+1}: Flow = ${nf(flow)} mm. Harus lebih besar dari 0.`);
+  }
+ });
+ return warns;
+}
 
 function optimize(F,mn,mx,step){
  const n=F.length,m=mn.length,U=Math.round(100/step),w=step/100;
@@ -255,6 +303,10 @@ function refresh(){refresh0();jmf()}
 function refresh0(){
  const {rows,errs}=data();
  $("err").innerHTML=errs.map(esc).join("<br>");
+ const warns=[];
+ if(!errs.length)warns.push(...validateGradationOrder(rows));
+ if(S.p.slice(0,S.n).some(v=>v!==""&&v!==undefined))warns.push(...validateProportions(S.p.slice(0,S.n)));
+ $("wrn").innerHTML=warns.length?`<b>⚠ Peringatan</b><ul>${warns.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:"";
  const pr=S.p.slice(0,S.n).map(v=>parseFloat(v)||0),tot=pr.reduce((a,b)=>a+b,0);
  $("pt").textContent=`Total proporsi: ${nf(tot)}%`+(Math.abs(tot-100)>0.01?" (seharusnya 100%, hasil dihitung proporsional)":"");
  if(errs.length||tot<=0){$("out").hidden=true;G=null;return}
@@ -376,6 +428,8 @@ function mini(t,u,xs,ys,f,lo,hi,kao){
 function mzCalc(){
  MZResult=null;
  const M=MZ(),num=v=>parseFloat(v),ln=v=>{const x=parseFloat(v);return isNaN(x)?null:x};
+ const mwarns=validateMarshall(M.rows);
+ $("mzw").innerHTML=mwarns.length?`<b>⚠ Peringatan</b><ul>${mwarns.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:"";
  const gsb=num(M.g.gsb),gse=num(M.g.gse),gb=num(M.g.gb),pg=num(M.g.pg)||1;
  const rows=M.rows.map((r,index)=>({index,ka:num(r.ka),a:num(r.a),b:num(r.b),c:num(r.c),st:num(r.st),fl:num(r.fl)})).filter(r=>r.ka>=0&&r.a>0&&r.b>r.c);
  const msg=t=>{$("mze").textContent=t;$("mzo").hidden=true};
