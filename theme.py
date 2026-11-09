@@ -110,12 +110,25 @@ background:linear-gradient(110deg,#33261b,#221a13)}
 }
 """.replace("%FONTS%", FONTS)
 
+from specs import load_specifications
+
+
+SPECIFICATIONS = load_specifications()
+DEFAULT_SPEC_VERSION = SPECIFICATIONS["default_version"]
+DEFAULT_SPEC = SPECIFICATIONS["versions"][DEFAULT_SPEC_VERSION]
+DEFAULT_MIX_TYPE = (
+    "AC-WC" if "AC-WC" in DEFAULT_SPEC["gradation"]
+    else next(iter(DEFAULT_SPEC["gradation"]))
+)
+
+
 # ----------------------------------------------------------------- data gradasi
-SIEVES = [19, 12.5, 9.5, 4.75, 2.36, 1.18, 0.6, 0.3, 0.15, 0.075]
-MN = [100, 90, 77, 53, 33, 21, 14, 9, 6, 4]          # AC-WC, Spesifikasi Umum 2018
-MX = [100, 100, 90, 69, 53, 40, 30, 22, 15, 9]
-BLEND = [100, 95.5, 82, 60.5, 44, 31.5, 22.5, 15.5, 10.5, 6.5]
-_LO, _HI = math.log10(0.075), math.log10(19)
+_DEFAULT_GRADATION = DEFAULT_SPEC["gradation"][DEFAULT_MIX_TYPE]
+SIEVES = [row[0] for row in _DEFAULT_GRADATION]
+MN = [row[1] for row in _DEFAULT_GRADATION]
+MX = [row[2] for row in _DEFAULT_GRADATION]
+BLEND = [(minimum + maximum) / 2 for minimum, maximum in zip(MN, MX)]
+_LO, _HI = math.log10(min(SIEVES)), math.log10(max(SIEVES))
 
 
 def _xy(box, d, p):
@@ -192,8 +205,8 @@ def hero_art() -> str:
 <path d="{hi}" fill="none" stroke="#e9b873" stroke-width="1.6"/><path d="{lo}" fill="none" stroke="#e9b873" stroke-width="1.6"/>
 <path d="{mid}" fill="none" stroke="#f6ead8" stroke-width="3" stroke-linejoin="round"/>{dots}
 <text x="{bx - 76}" y="{by - 72}" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="18" fill="#ecc994">AC-WC</text>
-<text x="{box[0]}" y="{box[3] + 20}" font-family="Hanken Grotesk,sans-serif" font-size="10.5" fill="#b8a995">0,075</text>
-<text x="{box[2]}" y="{box[3] + 20}" text-anchor="end" font-family="Hanken Grotesk,sans-serif" font-size="10.5" fill="#b8a995">19 mm</text></g>
+<text x="{box[0]}" y="{box[3] + 20}" font-family="Hanken Grotesk,sans-serif" font-size="10.5" fill="#b8a995">{min(SIEVES):g}</text>
+<text x="{box[2]}" y="{box[3] + 20}" text-anchor="end" font-family="Hanken Grotesk,sans-serif" font-size="10.5" fill="#b8a995">{max(SIEVES):g} mm</text></g>
 {_ring(bx, by, br, "gxRing")}
 </svg>"""
 
@@ -324,7 +337,7 @@ def split_text() -> str:
 
 def strip() -> str:
     items = [
-        ("doc", "Acuan Bina Marga 2018", "Batas gradasi dan syarat Marshall bisa diedit."),
+        ("doc", f"Preset {DEFAULT_SPEC['name']}", "Batas gradasi dan syarat Marshall bisa diedit."),
         ("grid", "Rumus hidup", "Excel hasil ekspor tetap menghitung ulang."),
         ("chart", "Grafik siap laporan", "Unduh grafik gradasi dan Marshall sebagai PNG."),
         ("device", "Data di perangkat", "Tersimpan di browser, tidak dikirim ke server."),
@@ -336,14 +349,26 @@ def strip() -> str:
 
 def spec_band() -> str:
     chips = lambda xs: '<div class="gx-chips">' + "".join(f"<span>{x}</span>" for x in xs) + "</div>"
+    mix_types = list(DEFAULT_SPEC["gradation"])
+    marshall_types = list(DEFAULT_SPEC["marshall"])
+    marshall_limits = DEFAULT_SPEC["marshall"]
+    first_mix = marshall_types[0]
+    marshall_chips = [
+        f"VIM {first_mix} {marshall_limits[first_mix]['vi1']}–{marshall_limits[first_mix]['vi2']}%",
+        "VMA min: " + " / ".join(str(marshall_limits[mix]["vma"]) for mix in marshall_types) + "%",
+        "VFA min: " + " / ".join(str(marshall_limits[mix]["vfa"]) for mix in marshall_types) + "%",
+        "Stabilitas min: " + " / ".join(str(marshall_limits[mix]["st"]) for mix in marshall_types) + " kg",
+        "Flow (lihat batas preset)",
+        "MQ (bila disyaratkan)",
+    ]
     return f"""
 <div class="gx-two">
 <div class="gx-panel"><h3>Gradasi agregat gabungan</h3>
-{chips(["AC-WC", "AC-BC", "AC-Base", "HRS-WC", "HRS-Base", "Latasir Kelas A", "Latasir Kelas B"])}
-<p class="gx-note">Batas mengacu pada Spesifikasi Umum Bina Marga 2018 (Divisi 6). Semua angka bisa diubah.</p></div>
+{chips(mix_types)}
+<p class="gx-note">Preset aktif: {DEFAULT_SPEC['name']}. Batas dapat diedit; cocokkan dengan spesifikasi proyek.</p></div>
 <div class="gx-panel"><h3>Syarat Marshall (Laston)</h3>
-{chips(["VIM 3–5%", "VMA min 15 / 14 / 13%", "VFA min 65%", "Stabilitas min 800 / 1800 kg", "Flow 2–4 / 3–6 mm", "MQ min 250 (opsional)"])}
-<p class="gx-note">Urutan angka: AC-WC / AC-BC / AC-Base. Cocokkan dengan spesifikasi proyek atau dosen.</p></div>
+{chips(marshall_chips)}
+<p class="gx-note">Angka mengikuti preset {DEFAULT_SPEC['name']}; cocokkan dengan spesifikasi proyek atau dosen.</p></div>
 </div>"""
 
 
@@ -401,10 +426,10 @@ def about(pengembang: str = "") -> str:
 <p class="gx-p">Hasil perhitungan diperlakukan sebagai bahan pertimbangan. Keputusan akhir tetap membutuhkan pemeriksaan manual dan pengujian laboratorium.</p></div>
 <div class="gx-panel"><dl class="gx-dl">
 <dt>Cakupan</dt><dd>Gradasi gabungan, JMF Kelompok 1–4, uji Marshall, ekspor Excel.</dd>
-<dt>Acuan</dt><dd>Spesifikasi Umum Bina Marga 2018 (Divisi 6). Batas dapat diedit.</dd>
+<dt>Acuan</dt><dd>Preset {DEFAULT_SPEC['name']}. Batas dapat diedit dan perlu dicocokkan dengan dokumen proyek.</dd>
 <dt>Optimal</dt><dd>Komposisi dengan margin terkecil terhadap batas spesifikasi yang paling besar.</dd>
 <dt>Data</dt><dd>Tersimpan di browser pengguna. Perhitungan berjalan di sisi klien.</dd>
-<dt>Teknologi</dt><dd>Streamlit untuk kerangka situs; kalkulator berupa HTML dan JavaScript (gradasi.html).</dd>
+<dt>Teknologi</dt><dd>Streamlit untuk kerangka situs; kalkulator berupa HTML/JavaScript dan preset tersimpan di specs.json.</dd>
 {dev}</dl></div>
 </div>"""
 

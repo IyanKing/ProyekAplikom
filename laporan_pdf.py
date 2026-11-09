@@ -34,6 +34,7 @@ from reportlab.platypus import (
 import theme
 import ui
 from compute import compute_gradation, compute_marshall, find_kao
+from specs import load_specifications, specification_version_name
 
 
 ACCENT = colors.HexColor("#0e6b78")
@@ -47,6 +48,7 @@ MONTHS = (
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 )
+SPECIFICATIONS = load_specifications()
 
 ui.inject()
 st.markdown(
@@ -179,20 +181,32 @@ def _format(value, digits=2):
 
 
 def _sample_state():
-    specification = [
-        (25, 100, 100), (19, 100, 100), (12.5, 90, 100), (9.5, 77, 90),
-        (4.75, 53, 69), (2.36, 33, 53), (1.18, 21, 40), (0.6, 14, 30),
-        (0.3, 9, 22), (0.15, 6, 15), (0.075, 4, 9),
-    ]
+    version_id = SPECIFICATIONS["default_version"]
+    version = SPECIFICATIONS["versions"][version_id]
+    specification = version["gradation"]["AC-WC"]
     fractions = [
         [100, 100, 100], [100, 100, 100], [95, 100, 100], [82, 95, 100],
         [60, 70, 80], [40, 50, 60], [25, 35, 45], [18, 25, 34],
         [12, 18, 25], [8, 12, 17], [5, 7, 9],
     ]
-    rows = [
-        {"d": str(d), "mn": str(mn), "mx": str(mx), "f": [str(v) for v in values] + [""]}
-        for (d, mn, mx), values in zip(specification, fractions)
-    ]
+    sample_values = {
+        row[0]: values for row, values in zip(
+            ((25, 100, 100), (19, 100, 100), (12.5, 90, 100), (9.5, 77, 90),
+             (4.75, 53, 69), (2.36, 33, 53), (1.18, 21, 40), (0.6, 14, 30),
+             (0.3, 9, 22), (0.15, 6, 15), (0.075, 4, 9)),
+            fractions,
+        )
+    }
+    rows = []
+    for sieve, minimum, maximum in specification:
+        values = sample_values.get(
+            sieve, [minimum, (minimum + maximum) / 2, maximum]
+        )
+        values = [min(maximum, max(minimum, value)) for value in values]
+        rows.append({
+            "d": str(sieve), "mn": str(minimum), "mx": str(maximum),
+            "f": [str(value) for value in values] + [""],
+        })
     marshall_rows = []
     for ka, samples in {
         5.0: [(1200, 1210, 700, 900, 2.6), (1201, 1211, 701, 920, 2.6), (1199, 1209, 699, 880, 2.5)],
@@ -206,6 +220,7 @@ def _sample_state():
                 "st": str(stability), "fl": str(flow),
             })
     return {
+        "spec_version": version_id,
         "sp": "AC-WC",
         "n": 3,
         "rows": rows,
@@ -213,7 +228,10 @@ def _sample_state():
         "jm": {"kg": "2", "ka": "5.5", "k": "0.75", "bt": "1200", "tg": "mid"},
         "mz": {
             "sp": "AC-WC",
-            "lim": {"vi1": "3", "vi2": "5", "vma": "15", "vfa": "65", "st": "800", "fl1": "2", "fl2": "4", "mq": "250"},
+            "lim": {
+                key: "" if value is None else str(value)
+                for key, value in version["marshall"]["AC-WC"].items()
+            },
             "g": {"gsb": "2.65", "gse": "2.65", "gb": "1.03", "pg": "1"},
             "rows": marshall_rows,
         },
@@ -232,6 +250,8 @@ def _validate_state(state):
         raise ValueError("Jumlah fraksi harus 2, 3, atau 4.")
     if not isinstance(state.get("p"), list) or len(state["p"]) < count:
         raise ValueError("Proporsi fraksi tidak lengkap.")
+    if "spec_version" in state and not isinstance(state["spec_version"], str):
+        raise ValueError("Versi preset spesifikasi harus berupa teks.")
     if any(_number(value) is None for value in state["p"][:count]):
         raise ValueError("Proporsi fraksi harus berupa angka.")
     for index, row in enumerate(state["rows"], start=1):
@@ -588,6 +608,14 @@ def build_pdf(state, gradation, jmf, marshall, kao_info, metadata):
         f"Fraksi: <b>{gradation['n']}</b>",
         f"Tanggal: <b>{datetime.now().day} {MONTHS[datetime.now().month - 1]} {datetime.now().year}</b>",
     ]
+    if state.get("spec_version"):
+        detail.append(
+            "Versi preset batas: <b>"
+            + escape(specification_version_name(
+                SPECIFICATIONS, state["spec_version"]
+            ))
+            + "</b> (batas dari data yang diunggah)"
+        )
     if metadata.get("project"):
         detail.append(f"Proyek: <b>{escape(metadata['project'])}</b>")
     if metadata.get("location"):
@@ -922,6 +950,12 @@ def build_docx(state, gradation, jmf, marshall, kao_info, metadata):
         f"Fraksi: {gradation['n']}",
         f"Tanggal: {datetime.now().day} {MONTHS[datetime.now().month - 1]} {datetime.now().year}",
     ]
+    if state.get("spec_version"):
+        details.append(
+            "Versi preset batas: "
+            + specification_version_name(SPECIFICATIONS, state["spec_version"])
+            + " (batas dari data yang diunggah)"
+        )
     for key, label in (("project", "Proyek"), ("location", "Lokasi"), ("author", "Disusun oleh")):
         if metadata.get(key):
             details.append(f"{label}: {metadata[key]}")

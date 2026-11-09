@@ -13,8 +13,10 @@ import db
 import theme
 import ui
 from compute import compute_effective_asphalt, compute_gradation
+from specs import load_specifications, specification_version_name
 
 ui.inject()
+SPECIFICATIONS = load_specifications()
 
 if "data_tersimpan_mode" not in st.session_state:
     st.session_state.data_tersimpan_mode = "dark"
@@ -415,6 +417,15 @@ def _show_marshall(marshall, data):
     }
     spec = marshall.get("sp", "AC-WC")
     st.caption(f"Spesifikasi: **{specification_names.get(spec, spec)}**")
+    version_id = data.get("spec_version")
+    st.caption(
+        "Preset versi: "
+        + (
+            specification_version_name(SPECIFICATIONS, version_id)
+            if version_id else "tidak dicatat (data lama)"
+        )
+        + ". Batas pada file tetap menjadi sumber perhitungan."
+    )
 
     gravity = marshall.get("g")
     if not isinstance(gravity, dict):
@@ -550,6 +561,8 @@ for index, uploaded_file in enumerate(uploaded_files or []):
             raise ValueError("Format harus berupa objek JSON dengan properti rows.")
         if any(not isinstance(row, dict) for row in data["rows"]):
             raise ValueError("Setiap baris ayakan harus berupa objek.")
+        if "spec_version" in data and not isinstance(data["spec_version"], str):
+            raise ValueError("Versi spesifikasi harus berupa teks.")
         parsed.append((index, uploaded_file.name, data, raw))
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
         st.error(f"{uploaded_file.name}: gagal dibaca ({error})")
@@ -819,19 +832,36 @@ st.divider()
 st.subheader("Template contoh")
 st.markdown("Unduh template AC-WC untuk mulai mengisi data gradasi di Kalkulator.")
 
+SPEC_VERSION = SPECIFICATIONS["default_version"]
+SPEC_VERSION_DATA = SPECIFICATIONS["versions"][SPEC_VERSION]
+TEMPLATE_PASSING = {
+    19: [100, 100, 100],
+    12.5: [95, 100, 100],
+    9.5: [82, 95, 100],
+    4.75: [60, 70, 80],
+    2.36: [40, 50, 60],
+    0.075: [6, 6, 6],
+}
 template = {
+    "spec_version": SPEC_VERSION,
     "sp": "AC-WC",
     "n": 3,
-    "rows": [
-        {"d": "19", "mn": "100", "mx": "100", "f": ["100", "100", "100", ""]},
-        {"d": "12.5", "mn": "90", "mx": "100", "f": ["95", "100", "100", ""]},
-        {"d": "9.5", "mn": "77", "mx": "90", "f": ["82", "95", "100", ""]},
-        {"d": "4.75", "mn": "53", "mx": "69", "f": ["60", "70", "80", ""]},
-        {"d": "2.36", "mn": "33", "mx": "53", "f": ["40", "50", "60", ""]},
-        {"d": "0.075", "mn": "4", "mx": "9", "f": ["6", "6", "6", ""]},
-    ],
+    "rows": [],
     "p": ["35", "35", "30"],
 }
+for sieve, minimum, maximum in SPEC_VERSION_DATA["gradation"]["AC-WC"]:
+    passing = [
+        min(maximum, max(minimum, value))
+        for value in TEMPLATE_PASSING.get(
+            sieve, [minimum, (minimum + maximum) / 2, maximum]
+        )
+    ]
+    template["rows"].append({
+        "d": str(sieve),
+        "mn": str(minimum),
+        "mx": str(maximum),
+        "f": [str(value) for value in passing] + [""],
+    })
 st.download_button(
     "Unduh template AC-WC.json",
     data=json.dumps(template, ensure_ascii=False, indent=2),

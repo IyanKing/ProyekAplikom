@@ -1,31 +1,54 @@
-const PS={
-"AC-WC":[[25,100,100],[19,100,100],[12.5,90,100],[9.5,77,90],[4.75,53,69],[2.36,33,53],[1.18,21,40],[.6,14,30],[.3,9,22],[.15,6,15],[.075,4,9]],
-"AC-BC":[[25,100,100],[19,90,100],[12.5,75,90],[9.5,66,82],[4.75,46,64],[2.36,30,49],[1.18,18,38],[.6,12,28],[.3,7,20],[.15,5,13],[.075,4,8]],
-"AC-Base":[[37.5,100,100],[25,90,100],[19,76,90],[12.5,60,78],[9.5,52,71],[4.75,35,54],[2.36,23,41],[1.18,13,30],[.6,10,22],[.3,6,15],[.15,4,10],[.075,3,7]],
-"HRS-WC":[[19,100,100],[12.5,90,100],[9.5,75,85],[2.36,50,72],[.6,35,60],[.075,6,10]],
-"HRS-Base":[[19,100,100],[12.5,90,100],[9.5,65,90],[2.36,35,55],[.6,15,35],[.075,2,9]],
-"Latasir Kelas A":[[12.5,100,100],[9.5,90,100],[.075,4,14]],
-"Latasir Kelas B":[[12.5,100,100],[2.36,75,100],[.075,8,18]]};
-const SF=[[100,100,100],[100,100,100],[82,100,100],[40,98,100],[5,54,99],[2,12,82],[1.5,6,60],[1.2,4.5,44],[1,3.5,31],[.8,2.5,21],[.5,1.5,11]];
+const SPEC_DATA=JSON.parse(document.getElementById("spec-data").textContent);
+const DEFAULT_SPEC_VERSION=SPEC_DATA.default_version;
 const LB=["A","B","C","D"];
 const $=id=>document.getElementById(id);
+const hasSpecVersion=id=>Object.prototype.hasOwnProperty.call(SPEC_DATA.versions,id);
 const nf=v=>v.toLocaleString("id-ID",{maximumFractionDigits:2});
 const rd=v=>Math.round(v*100)/100;
 const sv=v=>v.toLocaleString("id-ID",{maximumFractionDigits:3});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const eq=n=>{const b=Math.floor(100/n);return Array.from({length:n},(_,i)=>String(i?b:100-b*(n-1)))};
-const mkRows=k=>PS[k].map(([d,a,b])=>({d:String(d),mn:String(a),mx:String(b),f:["","","",""]}));
+const currentVersionId=()=>hasSpecVersion(S?.spec_version)?S.spec_version:DEFAULT_SPEC_VERSION;
+const versionData=()=>SPEC_DATA.versions[currentVersionId()];
+const gradationSpecs=()=>versionData().gradation;
+const marshallSpecs=()=>versionData().marshall;
+const mkRows=k=>gradationSpecs()[k].map(([d,a,b])=>({d:String(d),mn:String(a),mx:String(b),f:["","","",""]}));
+function applyGradationPreset(mixType){
+ const previous=S.rows;
+ S.rows=mkRows(mixType);
+ S.rows.forEach(row=>{
+  const existing=previous.find(item=>parseFloat(item.d)===parseFloat(row.d));
+  if(existing)row.f=existing.f.slice();
+ });
+}
+function samplePassingFor(row){
+ const known=SAMPLE_PASSING[parseFloat(row.d)];
+ const minimum=parseFloat(row.mn),maximum=parseFloat(row.mx);
+ if(!Number.isFinite(minimum)||!Number.isFinite(maximum))return["","","",""];
+ if(known)return known.map(value=>String(Math.min(maximum,Math.max(minimum,value)))).concat([""]);
+ return[minimum,(minimum+maximum)/2,maximum].map(String).concat([""]);
+}
 let S=null,G=null,fresh=false;
 try{const j=JSON.parse(localStorage.getItem("grad_s")||"null");if(j&&Array.isArray(j.rows)&&j.rows.every(r=>r&&Array.isArray(r.f))&&[2,3,4].includes(j.n)&&Array.isArray(j.p)){j.rows.forEach(r=>{while(r.f.length<4)r.f.push("")});S=j}}catch(e){}
-function sample(){const r=mkRows("AC-WC");r.forEach((x,i)=>{x.f=SF[i].map(String).concat([""])});return{sp:"AC-WC",n:3,rows:r,p:eq(3)}}
+const SAMPLE_PASSING={
+ 25:[100,100,100],19:[100,100,100],12.5:[82,100,100],9.5:[40,98,100],
+ 4.75:[5,54,99],2.36:[2,12,82],1.18:[1.5,6,60],0.6:[1.2,4.5,44],
+ 0.3:[1,3.5,31],0.15:[0.8,2.5,21],0.075:[0.5,1.5,11]
+};
+const defaultMix=()=>gradationSpecs()["AC-WC"]?"AC-WC":Object.keys(gradationSpecs())[0];
+function sample(){
+ const mix=defaultMix(),r=mkRows(mix);
+ r.forEach(row=>{row.f=samplePassingFor(row)});
+ return{spec_version:currentVersionId(),sp:mix,n:3,rows:r,p:eq(3)};
+}
 function sampleRealTemplate(){
- const rows=mkRows("AC-WC");
+ const mix=defaultMix(),rows=mkRows(mix);
  return{
-  sp:"AC-WC",n:3,rows,p:["","",""],
+  spec_version:currentVersionId(),sp:mix,n:3,rows,p:["","",""],
   jm:{kg:"2",ka:"5.5",k:"0.75",bt:"1200",tg:"mid"},
   mz:{
-   sp:"AC-WC",
-   lim:{vi1:"3",vi2:"5",vma:"15",vfa:"65",st:"800",fl1:"2",fl2:"4",mq:"250"},
+   sp:marshallSpecs()["AC-WC"]?"AC-WC":"Kustom",
+   lim:limOf(marshallSpecs()["AC-WC"]?"AC-WC":Object.keys(marshallSpecs())[0]),
    g:{gsb:"",gse:"",gb:"1.03",pg:"1"},
    rows:[
     {ka:"5",a:"",b:"",c:"",st:"",fl:""},
@@ -37,17 +60,17 @@ function sampleRealTemplate(){
  };
 }
 function sampleOdd(){
- const rows=mkRows("AC-WC").map((row,index)=>({
-  ...row,f:SF[index].map(String).concat([""]),
+ const mix=defaultMix(),rows=mkRows(mix).map(row=>({
+  ...row,f:samplePassingFor(row),
  })).reverse();
- rows[2].f[0]="98";
- rows[4].f[1]="";
+ if(rows[2])rows[2].f[0]="98";
+ if(rows[4])rows[4].f[1]="";
  return{
-  sp:"AC-WC",n:3,rows,p:["35","35","40"],
+  spec_version:currentVersionId(),sp:mix,n:3,rows,p:["35","35","40"],
   jm:{kg:"2",ka:"5.5",k:"0.75",bt:"1200",tg:"mid"},
   mz:{
-   sp:"AC-WC",
-   lim:{vi1:"3",vi2:"5",vma:"15",vfa:"65",st:"800",fl1:"2",fl2:"4",mq:"250"},
+   sp:marshallSpecs()["AC-WC"]?"AC-WC":"Kustom",
+   lim:limOf(marshallSpecs()["AC-WC"]?"AC-WC":Object.keys(marshallSpecs())[0]),
    g:{gsb:"2.65",gse:"2.70",gb:"1.03",pg:"1"},
    rows:[
     {ka:"5.5",a:"1200",b:"1190",c:"500",st:"1000",fl:"3"},
@@ -420,11 +443,11 @@ $("cj").onclick=()=>{
  const ta=$("tj");ta.value=[["No","Jenis / ayakan","Tertahan (%)","Berat (g)"]].concat(GJ).map(x=>x.join("\t")).join("\n");ta.hidden=false;ta.select();
  try{navigator.clipboard.writeText(ta.value).catch(()=>{})}catch(e){}
 };
-const MP={"AC-WC":{vi1:3,vi2:5,vma:15,vfa:65,st:800,fl1:2,fl2:4,mq:250},"AC-BC":{vi1:3,vi2:5,vma:14,vfa:65,st:800,fl1:2,fl2:4,mq:250},"AC-Base":{vi1:3,vi2:5,vma:13,vfa:65,st:1800,fl1:3,fl2:6,mq:""}};
 const LIMS=[["vi1","VIM min (%)"],["vi2","VIM maks (%)"],["vma","VMA min (%)"],["vfa","VFA min (%)"],["st","Stabilitas min (kg)"],["fl1","Flow min (mm)"],["fl2","Flow maks (mm)"],["mq","MQ min (kg/mm)"]];
 const PRM=[["gsb","BJ bulk agregat (Gsb)"],["gse","BJ efektif agregat (Gse)"],["gb","BJ aspal (Gb)"],["pg","Pengali stabilitas"]];
-const limOf=k=>Object.fromEntries(Object.entries(MP[k]).map(([a,b])=>[a,String(b)]));
-const MZ=()=>S.mz||(S.mz={sp:"AC-WC",lim:limOf("AC-WC"),g:{gsb:"",gse:"",gb:"1.03",pg:"1"},rows:[]});
+const limOf=k=>Object.fromEntries(Object.entries(marshallSpecs()[k]).map(([a,b])=>[a,b==null?"":String(b)]));
+const defaultMarshallMix=()=>marshallSpecs()["AC-WC"]?"AC-WC":Object.keys(marshallSpecs())[0];
+const MZ=()=>S.mz||(S.mz={sp:defaultMarshallMix(),lim:limOf(defaultMarshallMix()),g:{gsb:"",gse:"",gb:"1.03",pg:"1"},rows:[]});
 let MZResult=null;
 function pfit(xs,ys){
  const p=xs.map((x,i)=>[x,ys[i]]).filter(q=>isFinite(q[1]));
@@ -519,7 +542,7 @@ $("mz").oninput=e=>{
  persist();mzCalc();
 };
 $("mz").onclick=e=>{const b=e.target.closest(".del");if(b){MZ().rows.splice(+b.dataset.x,1);persist();mzRows();mzCalc()}};
-$("mzp").onchange=()=>{const M=MZ(),k=$("mzp").value;M.sp=k;if(MP[k])M.lim=limOf(k);persist();mzInit()};
+$("mzp").onchange=()=>{const M=MZ(),k=$("mzp").value;M.sp=k;if(marshallSpecs()[k])M.lim=limOf(k);persist();mzInit()};
 $("mar").onclick=()=>{MZ().rows.push({ka:"",a:"",b:"",c:"",st:"",fl:""});persist();mzRows()};
 $("mex").onclick=()=>{
  const M=MZ();
@@ -543,7 +566,7 @@ async function saveF(name,data){
  catch(e){xs(e&&e.code==="declined"?"Unduhan dibatalkan.":"Unduhan gagal ("+(e&&e.code||"error")+").")}
 }
 const CSV_COLUMNS=[
- "record_type","gradation_specification","fraction_count",
+ "record_type","specification_version","gradation_specification","fraction_count",
  "fraction_A_proportion_pct","fraction_B_proportion_pct",
  "fraction_C_proportion_pct","fraction_D_proportion_pct",
  "sieve_mm","gradation_min_pct","gradation_max_pct",
@@ -589,7 +612,7 @@ const csvCell=value=>{
 };
 function exportRawCsv(){
  const records=[];
- const add=record=>records.push(record);
+ const add=record=>records.push({specification_version:S.spec_version,...record});
  const rawProportions=S.p.slice(0,S.n).map(csvRawNumber);
  const proportions=S.p.slice(0,S.n).map(value=>csvNumber(value)||0);
  const proportionTotal=proportions.reduce((sum,value)=>sum+value,0);
@@ -867,6 +890,7 @@ function exportXlsx(){
  const M=MZ(),ws={},mPut=(r,c,v,f)=>put(ws,r,c,v,f),val=v=>v===""||v==null?NaN:parseFloat(v);
  mPut(0,0,"Data dan hasil Uji Marshall");
  mPut(1,0,"Spesifikasi");mPut(1,1,M.sp);
+ mPut(1,2,"Versi preset");mPut(1,3,S.spec_version);
  PRM.forEach(([key,label],i)=>{mPut(2+i,0,label);mPut(2+i,1,val(M.g[key]))});
  mPut(6,0,"Batas spesifikasi");mPut(7,0,"Parameter");mPut(7,1,"Min");mPut(7,2,"Maks");
  const limitValues={vi1:["VIM min (%)",val(M.lim.vi1),NaN],vi2:["VIM maks (%)",NaN,val(M.lim.vi2)],vma:["VMA min (%)",val(M.lim.vma),NaN],vfa:["VFA min (%)",val(M.lim.vfa),NaN],st:["Stabilitas min (kg)",val(M.lim.st),NaN],fl1:["Flow min (mm)",val(M.lim.fl1),NaN],fl2:["Flow maks (mm)",NaN,val(M.lim.fl2)],mq:["MQ min (kg/mm)",val(M.lim.mq),NaN]};
@@ -1011,8 +1035,18 @@ $("ar").onclick=()=>{S.rows.push({d:"",mn:"",mx:"",f:["","","",""]});persist();r
 $("nf").onchange=()=>{S.n=+$("nf").value;S.p=eq(S.n);persist();renderIn();renderP();refresh()};
 $("sp").onchange=()=>{
  const k=$("sp").value;S.sp=k;
- if(PS[k]){const old=S.rows;S.rows=mkRows(k);S.rows.forEach(r=>{const o=old.find(x=>parseFloat(x.d)===parseFloat(r.d));if(o)r.f=o.f.slice()})}
+ if(gradationSpecs()[k])applyGradationPreset(k);
  persist();renderIn();refresh();
+};
+$("specVersion").onchange=()=>{
+ const selected=$("specVersion").value;
+ if(!hasSpecVersion(selected))return;
+ S.spec_version=selected;
+ if(gradationSpecs()[S.sp])applyGradationPreset(S.sp);
+ const M=MZ();
+ if(M.sp!=="Kustom"&&marshallSpecs()[M.sp])M.lim=limOf(M.sp);
+ persist();init();
+ $("specVersionInfo").textContent=versionData().source+" Batas preset dapat disunting sesuai dokumen proyek.";
 };
 $("ex").onclick=()=>{
  S=sample();persist();init();$("go").click();
@@ -1123,12 +1157,14 @@ function parseState(j){
   if(!record(j.cost)||keys.some(k=>j.cost[k]!==undefined&&!value(j.cost[k])))throw new Error("Data biaya tidak valid.");
   state.cost=Object.fromEntries(keys.map(k=>[k,j.cost[k]===undefined?"":String(j.cost[k])]));
  }
+ if(j.spec_version!==undefined&&typeof j.spec_version!=="string")throw new Error("Versi spesifikasi tidak valid.");
  if(j.mz!==undefined){
   if(!record(j.mz)||!Array.isArray(j.mz.rows)||!j.mz.rows.every(r=>record(r)&&Object.values(r).every(value)))throw new Error("Data Marshall tidak valid.");
   if(j.mz.sp!==undefined&&typeof j.mz.sp!=="string")throw new Error("Spesifikasi Marshall tidak valid.");
   if(j.mz.g!==undefined&&(!record(j.mz.g)||!Object.values(j.mz.g).every(value)))throw new Error("Parameter Marshall tidak valid.");
   if(j.mz.lim!==undefined&&(!record(j.mz.lim)||!Object.values(j.mz.lim).every(value)))throw new Error("Batas spesifikasi Marshall tidak valid.");
-  const base={sp:"AC-WC",lim:limOf("AC-WC"),g:{gsb:"",gse:"",gb:"1.03",pg:"1"},rows:[]};
+  const defaultMix=defaultMarshallMix();
+  const base={sp:defaultMix,lim:limOf(defaultMix),g:{gsb:"",gse:"",gb:"1.03",pg:"1"},rows:[]};
   state.mz={...base,...j.mz,g:{...base.g,...j.mz.g},lim:{...base.lim,...j.mz.lim}};
  }
  return state;
@@ -1165,8 +1201,20 @@ $("cp").onclick=()=>{
  try{navigator.clipboard.writeText(ta.value).catch(()=>{})}catch(e){}
 };
 function init(){
- $("sp").innerHTML=Object.keys(PS).map(k=>`<option>${k}</option>`).join("")+"<option>Kustom</option>";
- $("sp").value=PS[S.sp]?S.sp:"Kustom";
+ const availableGradations=gradationSpecs(),availableMarshall=marshallSpecs();
+ const versionOptions=Object.entries(SPEC_DATA.versions).map(([id,version])=>`<option value="${esc(id)}">${esc(version.name)}</option>`).join("");
+ const missingVersion=!S.spec_version?"Versi data lama belum dicatat":`Versi tersimpan “${S.spec_version}” tidak tersedia`;
+ $("specVersion").innerHTML=(hasSpecVersion(S.spec_version)?"":`<option value="" selected disabled>${esc(missingVersion)}</option>`)+versionOptions;
+ $("specVersion").value=hasSpecVersion(S.spec_version)?S.spec_version:"";
+ $("specVersionInfo").textContent=!S.spec_version
+  ?"Data lama tidak mencatat versi preset; batas dari data tetap dipertahankan. Pilih versi untuk menerapkan preset."
+  :hasSpecVersion(S.spec_version)
+   ?`${versionData().source} Batas preset dapat disunting sesuai dokumen proyek.`
+   :`Versi tersimpan “${S.spec_version}” tidak tersedia di aplikasi ini. Batas dari data tetap dipertahankan; pilih versi tersedia untuk memakai preset.`;
+ $("sp").innerHTML=Object.keys(availableGradations).map(k=>`<option>${esc(k)}</option>`).join("")+"<option>Kustom</option>";
+ $("sp").value=availableGradations[S.sp]?S.sp:"Kustom";
+ $("mzp").innerHTML=Object.keys(availableMarshall).map(k=>`<option>${esc(k)}</option>`).join("")+"<option>Kustom</option>";
+ $("mzp").value=availableMarshall[MZ().sp]?MZ().sp:"Kustom";
  $("nf").value=String(S.n);jmInit();mzInit();
  renderIn();renderP();renderCostInputs();refresh();
 }

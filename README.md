@@ -40,8 +40,23 @@ Di Windows, aktifkan lingkungan virtual dengan
 oleh Streamlit. Navigasi aplikasi memerlukan Streamlit 1.46 atau lebih baru.
 
 `gradasi.html` adalah template kalkulator. `kalkulator.py` menyisipkan
-`styles.css` dan `app.js` ke dalam template sebelum mengirimkannya ke iframe
-Streamlit; ketiga berkas tersebut harus tetap berada di direktori yang sama.
+`styles.css`, `app.js`, dan data dari `specs.json` ke dalam template sebelum
+mengirimkannya ke iframe Streamlit; berkas-berkas tersebut harus tetap berada
+di direktori yang sama.
+
+### Versi spesifikasi
+
+Preset awal berasal dari Bina Marga 2018. Pilih versi di Kalkulator untuk
+menerapkan batas gradasi dan Marshall dari versi tersebut. Batas desain yang
+telah disunting disimpan bersama data dan tidak berubah hanya karena preset
+aplikasi berganti.
+
+Untuk menambah versi, tambahkan entri baru di `specs.json` dengan ID unik,
+nama, sumber dokumen, batas gradasi, dan batas Marshall yang telah diverifikasi.
+`default_version` menentukan preset untuk desain baru. Jangan mengisi versi
+baru dengan angka perkiraan; periksa dokumen resmi dan perbarui tes bila
+struktur atau perilakunya berubah. Berkas data menyimpan `spec_version` agar
+versi preset yang dipakai tetap dapat ditelusuri; laporan juga mencantumkannya.
 
 ## Alur penggunaan kalkulator
 
@@ -123,6 +138,8 @@ dimuat kembali.
   Peringatan validasi tidak menggantikan pemeriksaan teknis.
 - Spesifikasi bawaan adalah nilai awal yang dapat diedit; pastikan versi
   spesifikasi dan persyaratan kontrak yang berlaku sebelum memakai hasil.
+  ID versi pada data mencatat preset asal; batas aktual pada data tetap menjadi
+  masukan hitung karena pengguna dapat menyuntingnya.
 - Data contoh dan contoh harga hanya untuk ilustrasi. Harga contoh bukan
   penawaran atau survei harga terkini.
 - Aplikasi tidak memprediksi rutting atau fatigue dan tidak menggunakan
@@ -139,11 +156,12 @@ dimuat kembali.
 | Berkas | Kegunaan |
 | --- | --- |
 | `app.py` | Konfigurasi dan navigasi Streamlit |
-| `kalkulator.py` | Memuat template dan aset kalkulator |
+| `kalkulator.py`, `specs.py`, `specs.json` | Memuat dan memvalidasi preset spesifikasi berversi |
 | `gradasi.html`, `styles.css`, `app.js` | Struktur, gaya, dan logika kalkulator |
 | `compute.py` | Perhitungan gradasi, Marshall, dan KAO bersama |
 | `data_tersimpan.py`, `db.py` | Antarmuka dan penyimpanan riwayat desain |
 | `perbandingan.py` | Perbandingan dua desain |
 | `laporan_pdf.py` | Pembuatan laporan PDF dan Word |
+| `DESIGN.md` | Alasan desain, batasan, dan keputusan fitur |
 | `theme.py`, `ui.py` | Tema dan pembantu antarmuka |
 | `requirements.txt` | Dependensi Python |

@@ -15,9 +15,11 @@
 <section class="c">
 <h2>Spesifikasi dan fraksi</h2>
 <div class="g2">
+<label>Versi preset spesifikasi<select id="specVersion"></select></label>
 <label>Spesifikasi<select id="sp"></select></label>
 <label>Jumlah fraksi<select id="nf"><option>2</option><option>3</option><option>4</option></select></label>
 </div>
+<p class="h" id="specVersionInfo" role="status"></p>
 <div class="w"><table id="in"><thead id="ih"></thead><tbody id="ib"></tbody></table></div>
 <div class="bt"><button class="o" id="ar">Tambah ayakan</button><button class="o" id="ex">Muat contoh standar</button><button class="o" id="exReal">Muat template data asli</button><button class="o" id="exOdd">Muat skenario uji aneh</button></div>
 <p class="h" id="loadNote" role="status" aria-live="polite"></p>
@@ -28,7 +30,7 @@
 </div>
 <div class="bt"><button class="o" id="saveLocal">Simpan data ini</button><button class="o" id="loadLocal">Muat data pilihan</button><button class="o" id="deleteLocal">Hapus data pilihan</button><button class="o" id="saveFile">Unduh JSON</button><button class="o" id="loadFile">Muat JSON</button><input type="file" id="fileInput" accept=".json,application/json" hidden></div>
 <p class="h" id="savedStatus" role="status" aria-live="polite">Data yang disimpan di sini hanya tersedia di browser dan perangkat ini.</p>
-<p class="h">Isi % lolos tiap fraksi (A paling kasar). Batas spesifikasi mengacu pada Spesifikasi Umum Bina Marga 2018 dan bisa diedit; cocokkan dengan soal atau spesifikasi yang Anda pakai.</p>
+<p class="h">Isi % lolos tiap fraksi (A paling kasar). Batas preset dapat diedit; cocokkan dengan dokumen spesifikasi proyek atau soal yang Anda pakai.</p>
 <p class="er" id="err" role="alert"></p>
 <p class="warn" id="wrn" role="status"></p>
 </section>
@@ -104,12 +106,12 @@
 </section>
 <section class="c" id="mz">
 <h2>Uji Marshall dan kadar aspal optimum</h2>
-<div class="g2"><label>Spesifikasi<select id="mzp"><option>AC-WC</option><option>AC-BC</option><option>AC-Base</option><option>Kustom</option></select></label></div>
+<div class="g2"><label>Jenis campuran Marshall<select id="mzp"></select></label></div>
 <div class="g2" id="mzl" style="margin-top:10px"></div>
 <div class="g2" id="mzg" style="margin-top:10px"></div>
 <div class="w"><table id="mi"><thead><tr><th>KA (%)</th><th>Berat kering (g)</th><th>Berat SSD (g)</th><th>Berat dalam air (g)</th><th>Stabilitas (baca)</th><th>Flow (mm)</th><th></th></tr></thead><tbody id="mb"></tbody></table></div>
 <div class="bt"><button class="o" id="mar">Tambah benda uji</button><button class="o" id="mex">Muat contoh (ilustrasi)</button></div>
-<p class="h">Satu baris per benda uji; KA yang sama otomatis dirata-ratakan. Stabilitas = pembacaan × pengali (isi 1 jika sudah dalam kg). Gse = (Gsb + Gsa) / 2 bila hanya ada BJ bulk dan semu. Batas mengacu pada Spesifikasi Umum Bina Marga 2018 (Laston); sesuaikan dengan spesifikasi dosen. Data contoh hanya ilustrasi, bukan data laboratorium.</p>
+<p class="h">Satu baris per benda uji; KA yang sama otomatis dirata-ratakan. Stabilitas = pembacaan × pengali (isi 1 jika sudah dalam kg). Gse = (Gsb + Gsa) / 2 bila hanya ada BJ bulk dan semu. Batas preset Marshall memakai versi spesifikasi yang dipilih; sesuaikan dengan dokumen proyek. Data contoh hanya ilustrasi, bukan data laboratorium.</p>
 <p class="er" id="mze"></p>
 <p class="warn" id="mzw" role="status"></p>
 <div id="mzo" hidden>
@@ -129,6 +131,7 @@
 </section>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- SPECS_PLACEHOLDER -->
 <!-- APP_SCRIPT_PLACEHOLDER -->
 </body>
 </html>
