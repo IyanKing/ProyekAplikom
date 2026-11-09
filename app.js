@@ -462,13 +462,22 @@ function mzCalc(){
  const msg=t=>{$("mze").textContent=t;$("mzo").hidden=true};
  if(!rows.length)return msg("Isi data benda uji atau tekan Muat contoh.");
  if(!(gsb>0&&gse>0&&gb>0))return msg("Isi BJ bulk (Gsb), BJ efektif (Gse), dan BJ aspal (Gb).");
+ if(gse<gsb)return msg("BJ efektif agregat (Gse) tidak boleh lebih kecil dari BJ bulk (Gsb).");
  $("mze").textContent="";
- const sp=rows.map(r=>{const gmb=r.a/(r.b-r.c),gmm=100/((100-r.ka)/gse+r.ka/gb),vim=100*(gmm-gmb)/gmm,vma=100-gmb*(100-r.ka)/gsb,st=r.st*pg;return{...r,gmb,gmm,vim,vma,vfa:100*(vma-vim)/vma,st,fl:r.fl,mq:r.fl>0?st/r.fl:NaN}});
+ const p200Row=G?.res?.find(r=>Math.abs(r.d-0.075)<0.001);
+ const p200=Number.isFinite(p200Row?.P)?p200Row.P:undefined;
+ const pba=100*(gse-gsb)/(gse*gsb)*gb;
+ const sp=rows.map(r=>{
+  const gmb=r.a/(r.b-r.c),gmm=100/((100-r.ka)/gse+r.ka/gb),vim=100*(gmm-gmb)/gmm,vma=100-gmb*(100-r.ka)/gsb,st=r.st*pg;
+  const pbe=r.ka-pba*(100-r.ka)/100;
+  const dbRatio=p200!==undefined&&pbe>0?p200/pbe:NaN;
+  return{...r,gmb,gmm,vim,vma,vfa:100*(vma-vim)/vma,st,fl:r.fl,pba,pbe,p200,dbRatio,mq:r.fl>0?st/r.fl:NaN};
+ });
  const grp=new Map();
  sp.forEach(s=>{const k=Math.round(s.ka*1000)/1000;if(!grp.has(k))grp.set(k,[]);grp.get(k).push(s)});
  const ks=[...grp.keys()].sort((a,b)=>a-b);
  const mean=(a,f)=>{const v=a.map(f).filter(isFinite);return v.length?v.reduce((x,y)=>x+y,0)/v.length:NaN};
- const A=ks.map(k=>{const a=grp.get(k),o={ka:k,n:a.length};["gmb","vim","vma","vfa","st","fl","mq"].forEach(q=>{o[q]=mean(a,s=>s[q])});return o});
+ const A=ks.map(k=>{const a=grp.get(k),o={ka:k,n:a.length};["gmb","vim","vma","vfa","st","fl","mq","pba","pbe","p200","dbRatio"].forEach(q=>{o[q]=mean(a,s=>s[q])});return o});
  const L=M.lim,MT=[["vim","VIM","%",ln(L.vi1),ln(L.vi2)],["vma","VMA","%",ln(L.vma),null],["vfa","VFA","%",ln(L.vfa),null],["st","Stabilitas","kg",ln(L.st),null],["fl","Flow","mm",ln(L.fl1),ln(L.fl2)],["mq","MQ","kg/mm",ln(L.mq),null]];
  const fits=MT.map(m=>pfit(ks,A.map(a=>a[m[0]])));
  const x0=ks[0],x1=ks[ks.length-1],N=Math.max(1,Math.round((x1-x0)/0.01)),grid=Array.from({length:N+1},(_,i)=>x0+(x1-x0)*i/N);
@@ -481,7 +490,8 @@ function mzCalc(){
  MZResult={spec:M.sp,g:{...M.g},limits:MT.map(m=>({key:m[0],name:m[1],unit:m[2],min:m[3],max:m[4]})),samples:sp,averages:A,kao,range:best?[grid[best[0]],grid[best[1]]]:null};
  const f1=v=>isFinite(v)?nf(v):"–",n3=v=>isFinite(v)?v.toLocaleString("id-ID",{maximumFractionDigits:3}):"–";
  $("mzk").innerHTML=kao!=null?`<div class="k"><span>Kadar aspal optimum (KAO)</span><b>${nf(Math.round(kao*100)/100)}%</b><small>titik tengah rentang yang memenuhi semua syarat</small></div><div class="k"><span>Rentang yang memenuhi</span><b style="font-size:1.5rem">${nf(grid[best[0]])} – ${nf(grid[best[1]])}%</b></div><div class="k"><span>Perkiraan pada KAO</span><small style="color:var(--st)">${MT.map((m,i)=>fits[i]?`${m[1]} ${nf(pev(fits[i],kao))}`:"").filter(Boolean).join(" · ")}</small></div>`:`<div class="k"><span>Kadar aspal optimum (KAO)</span><b style="font-size:1.5rem">Belum ditemukan</b><small>${ks.length<2?"Butuh minimal 2 kadar aspal berbeda.":"Tidak ada kadar aspal yang memenuhi semua syarat."}</small></div>`;
- $("mzt").innerHTML=A.map(a=>`<tr><td>${nf(a.ka)}</td><td class="r">${a.n}</td><td class="r">${n3(a.gmb)}</td>`+MT.map(m=>{const v=a[m[0]],b=isFinite(v)&&((m[3]!=null&&v<m[3])||(m[4]!=null&&v>m[4]));return `<td class="r${b?" bad2":""}">${f1(v)}</td>`}).join("")+`</tr>`).join("");
+ $("mzt").innerHTML=A.map(a=>`<tr><td>${nf(a.ka)}</td><td class="r">${a.n}</td><td class="r">${n3(a.gmb)}</td>`+MT.map(m=>{const v=a[m[0]],b=isFinite(v)&&((m[3]!=null&&v<m[3])||(m[4]!=null&&v>m[4]));return `<td class="r${b?" bad2":""}">${f1(v)}</td>`}).join("")+`<td class="r">${f1(a.pba)}</td><td class="r">${f1(a.pbe)}</td><td class="r">${f1(a.p200)}</td><td class="r">${f1(a.dbRatio)}</td></tr>`).join("");
+ $("mzeffnote").textContent="Rumus: Gmb = A/(B−C); Gmm = 100/((100−Pb)/Gse+Pb/Gb); VIM = 100·(Gmm−Gmb)/Gmm; VMA = 100−Gmb·Ps/Gsb; VFA = 100·(VMA−VIM)/VMA; MQ = Stabilitas/Flow. Aspal efektif: Pba = 100·(Gse−Gsb)/(Gse·Gsb)·Gb; Pbe = Pb−(Pba/100)·Ps; D/B = P200/Pbe. Metode uji terkait ASTM D2726, D2041, D3203, D6927; desain campuran Asphalt Institute MS-2. D/B 0,6–1,2 adalah acuan umum, bukan batas otomatis; verifikasi spesifikasi proyek.";
  $("mzc2").innerHTML=MT.map((m,i)=>mini(m[1],m[2],ks,A.map(a=>a[m[0]]),fits[i],m[3],m[4],kao)).join("");
  $("mzr").innerHTML=MT.map((m,i)=>{
   const lim=!hasL(m)?"–":(m[3]!=null?"≥ "+nf(m[3]):"")+(m[3]!=null&&m[4]!=null?" dan ":"")+(m[4]!=null?"≤ "+nf(m[4]):"");
@@ -553,7 +563,8 @@ const CSV_COLUMNS=[
  "marshall_limit_flow_max_mm","marshall_limit_mq_min_kg_per_mm",
  "asphalt_content_pct","dry_weight_g","ssd_weight_g","submerged_weight_g",
  "stability_reading","flow_mm","gmb","gmm","vim_pct","vma_pct",
- "vfa_pct","stability_kg","mq_kg_per_mm","average_sample_count",
+ "vfa_pct","stability_kg","mq_kg_per_mm","pba_pct","pbe_pct","p200_pct",
+ "dust_to_binder_ratio","average_sample_count",
  "kao_pct","kao_range_min_pct","kao_range_max_pct",
  "cost_material","cost_unit_price_rp_per_ton","cost_quantity_fraction",
  "cost_quantity_kg_per_ton","cost_estimated_rp_per_ton","calculation_note",
@@ -713,6 +724,10 @@ function exportRawCsv(){
     vfa_pct:calculated.vfa,
     stability_kg:calculated.st,
     mq_kg_per_mm:calculated.mq,
+    pba_pct:calculated.pba,
+    pbe_pct:calculated.pbe,
+    p200_pct:calculated.p200,
+    dust_to_binder_ratio:calculated.dbRatio,
     ...jmfData,
    });
   });
@@ -733,6 +748,10 @@ function exportRawCsv(){
     stability_kg:average.st,
     flow_mm:average.fl,
     mq_kg_per_mm:average.mq,
+    pba_pct:average.pba,
+    pbe_pct:average.pbe,
+    p200_pct:average.p200,
+    dust_to_binder_ratio:average.dbRatio,
    });
   });
   add({
@@ -854,7 +873,7 @@ function exportXlsx(){
  LIMS.forEach(([key],i)=>{const entry=limitValues[key];mPut(8+i,0,entry[0]);mPut(8+i,1,entry[1]);mPut(8+i,2,entry[2])});
  const sampleTitle=18,sampleHeader=19,sampleStart=20;
  mPut(sampleTitle,0,"Data tiap benda uji dan hasil perhitungan");
- ["KA (%)","Berat kering (g)","Berat SSD (g)","Berat dalam air (g)","Stabilitas (baca)","Flow (mm)","Gmb","Gmm","VIM (%)","VMA (%)","VFA (%)","Stabilitas (kg)","MQ (kg/mm)"].forEach((label,i)=>mPut(sampleHeader,i,label));
+ ["KA (%)","Berat kering (g)","Berat SSD (g)","Berat dalam air (g)","Stabilitas (baca)","Flow (mm)","Gmb","Gmm","VIM (%)","VMA (%)","VFA (%)","Stabilitas (kg)","MQ (kg/mm)","Pba (%)","Pbe (%)","P200 (%)","D/B"].forEach((label,i)=>mPut(sampleHeader,i,label));
  const calculatedByIndex=new Map((MZResult?.samples||[]).map(sample=>[sample.index,sample]));
  M.rows.forEach((sample,index)=>{
   const row=sampleStart+index,excelRow=row+1,result=calculatedByIndex.get(index);
@@ -868,17 +887,21 @@ function exportXlsx(){
    [10,result.vfa,`IFERROR(100*(K${excelRow}-I${excelRow})/K${excelRow},"")`],
    [11,result.st,`IFERROR(E${excelRow}*$B$6,"")`],
    [12,result.mq,`IFERROR(L${excelRow}/F${excelRow},"")`],
+   [13,result.pba,`IFERROR(100*($B$4-$B$3)/($B$4*$B$3)*$B$5,"")`],
+   [14,result.pbe,`IFERROR(A${excelRow}-N${excelRow}/100*(100-A${excelRow}),"")`],
+   [15,result.p200],
+   [16,result.dbRatio,`IFERROR(P${excelRow}/O${excelRow},"")`],
   ];
   formulaCells.forEach(([col,value,formula])=>mPut(row,col,value,formula));
  });
  const summaryTitle=sampleStart+M.rows.length+1,summaryHeader=summaryTitle+1;
  mPut(summaryTitle,0,"Ringkasan rata-rata per kadar aspal");
- ["KA (%)","Jumlah sampel","Gmb","VIM (%)","VMA (%)","VFA (%)","Stabilitas (kg)","Flow (mm)","MQ (kg/mm)"].forEach((label,i)=>mPut(summaryHeader,i,label));
+ ["KA (%)","Jumlah sampel","Gmb","VIM (%)","VMA (%)","VFA (%)","Stabilitas (kg)","Flow (mm)","MQ (kg/mm)","Pba (%)","Pbe (%)","P200 (%)","D/B"].forEach((label,i)=>mPut(summaryHeader,i,label));
  let lastRow=Math.max(summaryHeader,sampleStart+M.rows.length-1);
  if(MZResult){
   MZResult.averages.forEach((average,index)=>{
    const row=summaryHeader+1+index;
-   [average.ka,average.n,average.gmb,average.vim,average.vma,average.vfa,average.st,average.fl,average.mq].forEach((value,col)=>mPut(row,col,value));
+   [average.ka,average.n,average.gmb,average.vim,average.vma,average.vfa,average.st,average.fl,average.mq,average.pba,average.pbe,average.p200,average.dbRatio].forEach((value,col)=>mPut(row,col,value));
    lastRow=row;
   });
   const kaoRow=summaryHeader+2+MZResult.averages.length;
@@ -888,8 +911,8 @@ function exportXlsx(){
   else mPut(kaoRow+1,1,"Tidak ditemukan");
   lastRow=kaoRow+1;
  }
- ws["!ref"]=`A1:M${lastRow+1}`;
- ws["!cols"]=[{wch:28},{wch:18},{wch:18},{wch:20},{wch:18},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:18},{wch:14}];
+ ws["!ref"]=`A1:Q${lastRow+1}`;
+ ws["!cols"]=[{wch:28},{wch:18},{wch:18},{wch:20},{wch:18},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:18},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12}];
  XLSX.utils.book_append_sheet(wb,ws,"Marshall");
  saveF("JMF-gradasi.xlsx",XLSX.write(wb,{bookType:"xlsx",type:"array"}));
 }

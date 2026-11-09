@@ -21,6 +21,10 @@ COUNT_FIELDS = (
     ("VIM (%)", "vim"),
     ("VMA (%)", "vma"),
     ("VFA (%)", "vfa"),
+    ("Pba (%)", "pba"),
+    ("Pbe (%)", "pbe"),
+    ("P200 (%)", "p200"),
+    ("D/B", "db_ratio"),
     ("Stabilitas (kg)", "st"),
     ("Flow (mm)", "fl"),
     ("MQ (kg/mm)", "mq"),
@@ -256,8 +260,8 @@ if state_a is None or state_b is None:
 try:
     gradation_a = compute_gradation(state_a)
     gradation_b = compute_gradation(state_b)
-    marshall_a = compute_marshall(state_a)
-    marshall_b = compute_marshall(state_b)
+    marshall_a = compute_marshall(state_a, gradation_a)
+    marshall_b = compute_marshall(state_b, gradation_b)
 except (ArithmeticError, KeyError, TypeError, ValueError) as error:
     st.error(f"Data desain tidak dapat dihitung: {error}")
     st.stop()
@@ -314,6 +318,8 @@ else:
         st.dataframe(_marshall_frame(marshall_b), use_container_width=True, hide_index=True)
 
 st.caption(
+    "Pba = 100·(Gse−Gsb)/(Gse·Gsb)·Gb; Pbe = Pb−(Pba/100)·Ps; "
+    "D/B = P200/Pbe (0,6–1,2 hanya acuan umum, bukan batas otomatis). "
     "Perbandingan bersifat informatif. Periksa kesesuaian spesifikasi, "
     "validasi laboratorium, biaya, dan ketersediaan material sebelum memilih desain."
 )

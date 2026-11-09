@@ -57,7 +57,40 @@ def compute_gradation(state):
     return {"n": count, "p": proportions, "w": weights, "rows": rows}
 
 
-def compute_marshall(state):
+def compute_effective_asphalt(gsb, gse, gb, pb, p200=None):
+    """Calculate absorbed/effective asphalt and the dust-to-binder ratio."""
+    bulk = _number(gsb)
+    effective = _number(gse)
+    asphalt = _number(gb)
+    asphalt_content = _number(pb)
+    passing_200 = _number(p200)
+    if not (
+        bulk is not None and bulk > 0
+        and effective is not None and effective >= bulk
+        and asphalt is not None and asphalt > 0
+        and asphalt_content is not None and 0 <= asphalt_content < 100
+    ):
+        return None
+    if passing_200 is not None and not 0 <= passing_200 <= 100:
+        passing_200 = None
+
+    aggregate_content = 100 - asphalt_content
+    absorbed = 100 * (effective - bulk) / (effective * bulk) * asphalt
+    effective_content = asphalt_content - absorbed * aggregate_content / 100
+    dust_ratio = (
+        passing_200 / effective_content
+        if passing_200 is not None and effective_content > 0
+        else None
+    )
+    return {
+        "pba": absorbed,
+        "pbe": effective_content,
+        "p200": passing_200,
+        "db_ratio": dust_ratio,
+    }
+
+
+def compute_marshall(state, gradation=None):
     marshall = state.get("mz")
     if not isinstance(marshall, dict):
         return None
@@ -73,6 +106,18 @@ def compute_marshall(state):
     raw_samples = marshall.get("rows")
     if not isinstance(raw_samples, list):
         return None
+    p200 = None
+    if isinstance(gradation, dict) and isinstance(gradation.get("rows"), list):
+        p200_row = next(
+            (
+                row for row in gradation["rows"]
+                if isinstance(row, dict)
+                and abs((_number(row.get("d")) or 0) - 0.075) < 0.001
+            ),
+            None,
+        )
+        if p200_row is not None:
+            p200 = _number(p200_row.get("P"))
     samples = []
     for row in raw_samples:
         if not isinstance(row, dict):
@@ -98,6 +143,9 @@ def compute_marshall(state):
         vma = 100 - gmb * (100 - ka) / bulk
         vfa = 100 * (vma - vim) / vma if vma else None
         stability_result = stability * multiplier if stability is not None else None
+        effective_asphalt = compute_effective_asphalt(
+            bulk, effective, asphalt, ka, p200
+        )
         samples.append({
             "ka": ka,
             "a": dry,
@@ -110,6 +158,10 @@ def compute_marshall(state):
             "vfa": vfa,
             "st": stability_result,
             "fl": flow,
+            "pba": effective_asphalt["pba"] if effective_asphalt else None,
+            "pbe": effective_asphalt["pbe"] if effective_asphalt else None,
+            "p200": effective_asphalt["p200"] if effective_asphalt else None,
+            "db_ratio": effective_asphalt["db_ratio"] if effective_asphalt else None,
             "mq": (
                 stability_result / flow
                 if stability_result is not None and flow is not None and flow != 0
@@ -123,7 +175,10 @@ def compute_marshall(state):
     for sample in samples:
         grouped.setdefault(round(sample["ka"], 3), []).append(sample)
     averages = []
-    metrics = ("gmb", "vim", "vma", "vfa", "st", "fl", "mq")
+    metrics = (
+        "gmb", "vim", "vma", "vfa", "st", "fl", "mq",
+        "pba", "pbe", "p200", "db_ratio",
+    )
     for ka, group in sorted(grouped.items()):
         average = {"ka": ka, "n": len(group)}
         for metric in metrics:

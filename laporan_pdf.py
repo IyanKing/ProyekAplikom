@@ -152,7 +152,7 @@ st.markdown(
 )
 ui.html(theme.page_head(
     "Laporan PDF atau Word",
-    "Susun laporan gradasi, rancangan campuran, dan hasil Marshall dari data JSON.",
+    "Susun laporan gradasi, rancangan campuran, hasil Marshall, dan aspal efektif dari data JSON.",
     "Dokumen laporan",
 ))
 
@@ -298,6 +298,12 @@ def validate_data_warnings(state, grad):
 
     marshall = state.get("mz")
     marshall_rows = marshall.get("rows", []) if isinstance(marshall, dict) else []
+    gravity = marshall.get("g", {}) if isinstance(marshall, dict) else {}
+    if isinstance(gravity, dict):
+        bulk = _number(gravity.get("gsb"))
+        effective = _number(gravity.get("gse"))
+        if bulk is not None and effective is not None and effective < bulk:
+            warnings.append("BJ efektif agregat (Gse) lebih kecil dari BJ bulk (Gsb); Pba/Pbe tidak dihitung.")
     if isinstance(marshall_rows, list):
         for index, row in enumerate(marshall_rows):
             if not isinstance(row, dict):
@@ -722,6 +728,39 @@ def build_pdf(state, gradation, jmf, marshall, kao_info, metadata):
             [23 * mm, 12 * mm, 22 * mm, 25 * mm, 25 * mm, 25 * mm, 34 * mm, 23 * mm, 27 * mm],
             styles,
         ))
+        story.append(Paragraph(
+            "<b>Rumus dan rujukan:</b> Gmb = A/(B−C); "
+            "Gmm = 100/((100−Pb)/Gse+Pb/Gb); "
+            "VIM = 100·(Gmm−Gmb)/Gmm; "
+            "VMA = 100−Gmb·Ps/Gsb; VFA = 100·(VMA−VIM)/VMA; "
+            "MQ = Stabilitas/Flow. Metode uji terkait: ASTM D2726, D2041, "
+            "D3203, dan D6927; desain campuran: Asphalt Institute MS-2.",
+            styles["small"],
+        ))
+        effective_rows = [[
+            "KA (%)", "Pba (%)", "Pbe (%)", "P200 (%)", "D/B",
+        ]]
+        for row in marshall["A"]:
+            effective_rows.append([
+                _format(row["ka"]), _format(row["pba"], 3),
+                _format(row["pbe"], 3), _format(row["p200"], 2),
+                _format(row["db_ratio"], 3),
+            ])
+        story.append(Spacer(1, 5))
+        story.append(Paragraph("Aspal Efektif dan Rasio Debu-Aspal", styles["body"]))
+        story.append(_pdf_table(
+            effective_rows,
+            [30 * mm, 31 * mm, 31 * mm, 31 * mm, 25 * mm],
+            styles,
+        ))
+        story.append(Paragraph(
+            "Pba = 100·(Gse−Gsb)/(Gse·Gsb)·Gb; "
+            "Pbe = Pb−(Pba/100)·Ps; D/B = P200/Pbe. "
+            "Rujukan perancangan: Asphalt Institute MS-2. "
+            "Rentang D/B 0,6–1,2 hanya acuan umum, bukan batas otomatis; "
+            "periksa spesifikasi proyek.",
+            styles["small"],
+        ))
         if kao_info and kao_info.get("kao") is not None:
             first, last = kao_info["range"]
             story.append(Spacer(1, 5))
@@ -1021,6 +1060,35 @@ def build_docx(state, gradation, jmf, marshall, kao_info, metadata):
             ])
         _docx_heading(document, "Rata-rata hasil per kadar aspal", level=2)
         _docx_table(document, result_rows)
+        formula_note = document.add_paragraph(
+            "Rumus: Gmb = A/(B−C); Gmm = 100/((100−Pb)/Gse+Pb/Gb); "
+            "VIM = 100·(Gmm−Gmb)/Gmm; VMA = 100−Gmb·Ps/Gsb; "
+            "VFA = 100·(VMA−VIM)/VMA; MQ = Stabilitas/Flow. "
+            "Metode uji terkait: ASTM D2726, D2041, D3203, dan D6927; "
+            "desain campuran: Asphalt Institute MS-2."
+        )
+        for run in formula_note.runs:
+            run.italic = True
+            run.font.size = Pt(8)
+        effective_rows = [["KA (%)", "Pba (%)", "Pbe (%)", "P200 (%)", "D/B"]]
+        for row in marshall["A"]:
+            effective_rows.append([
+                _format(row["ka"]), _format(row["pba"], 3),
+                _format(row["pbe"], 3), _format(row["p200"], 2),
+                _format(row["db_ratio"], 3),
+            ])
+        _docx_heading(document, "Aspal Efektif dan Rasio Debu-Aspal", level=2)
+        _docx_table(document, effective_rows)
+        effective_note = document.add_paragraph(
+            "Pba = 100·(Gse−Gsb)/(Gse·Gsb)·Gb; "
+            "Pbe = Pb−(Pba/100)·Ps; D/B = P200/Pbe. "
+            "Rujukan perancangan: Asphalt Institute MS-2. "
+            "Rentang D/B 0,6–1,2 hanya acuan umum, bukan batas otomatis; "
+            "periksa spesifikasi proyek."
+        )
+        for run in effective_note.runs:
+            run.italic = True
+            run.font.size = Pt(8)
         if kao_info and kao_info.get("kao") is not None:
             first, last = kao_info["range"]
             document.add_paragraph(
@@ -1099,7 +1167,7 @@ if selected_state is not None:
     try:
         gradation = compute_gradation(selected_state)
         jmf = compute_jmf(selected_state, gradation)
-        marshall = compute_marshall(selected_state)
+        marshall = compute_marshall(selected_state, gradation)
         kao_info = find_kao(marshall)
         warnings = validate_data_warnings(selected_state, gradation)
         if warnings:

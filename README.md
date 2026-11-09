@@ -8,8 +8,9 @@ ditinjau terhadap data laboratorium dan spesifikasi proyek yang berlaku.
 ## Fitur
 
 - **Kalkulator** — menggabungkan fraksi agregat, mencari proporsi campuran,
-  menampilkan grafik/tabel gradasi, menghitung JMF, parameter Marshall, KAO,
-  dan estimasi biaya material.
+  menampilkan grafik/tabel gradasi, menghitung JMF, parameter Marshall,
+  aspal terserap/efektif (Pba/Pbe), rasio debu-aspal (D/B), KAO, dan estimasi
+  biaya material.
 - **Tiga preset kalkulator** — contoh standar untuk demonstrasi, template
   kosong untuk memasukkan hasil laboratorium sendiri, dan skenario uji
   tidak wajar untuk melihat respons validasi. Template kosong bukan data
@@ -94,11 +95,21 @@ dimuat kembali.
 - Untuk Marshall, `Gmb = berat kering / (berat SSD - berat dalam air)`;
   `Gmm = 100 / ((100 - KA) / Gse + KA / Gb)`;
   `VIM = 100 × (Gmm - Gmb) / Gmm`;
-  `VMA = 100 - Gmb × (100 - KA) / Gsb`;
+  `VMA = 100 - Gmb × Ps / Gsb`, dengan `Ps = 100 - KA`;
   `VFA = 100 × (VMA - VIM) / VMA`.
   Stabilitas hasil adalah pembacaan dikali pengali stabilitas; `MQ` adalah
   stabilitas hasil dibagi Flow. Rumus menganggap KA dan persen gradasi
   dimasukkan dalam satuan persen.
+- Aspal terserap dihitung sebagai `Pba = 100 × (Gse - Gsb) / (Gse × Gsb) × Gb`;
+  aspal efektif dalam campuran `Pbe = KA - (Pba / 100) × Ps`; dan rasio
+  debu-aspal `D/B = P200 / Pbe`, dengan `P200` adalah persen lolos ayakan
+  0,075 mm dari gradasi gabungan. Pba dinyatakan terhadap berat agregat,
+  sedangkan Pbe dinyatakan terhadap berat campuran. Rasio 0,6–1,2 ditampilkan
+  hanya sebagai acuan umum, bukan sebagai batas kelulusan; periksa spesifikasi
+  proyek. Metode uji Marshall terkait mencakup ASTM D2726, D2041, D3203, dan
+  D6927; rujukan desain campuran mencakup Asphalt Institute MS-2.
+- Penambahan Pba/Pbe tidak mengubah rumus VMA/VFA yang sudah digunakan:
+  VMA memakai persen agregat `Ps`, bukan mengganti KA dengan Pbe.
 - KAO adalah titik tengah rentang kadar aspal yang memenuhi batas pada kurva
   regresi parameter Marshall. Regresi merupakan pendekatan numerik dari data
   yang dimasukkan, bukan prediksi kinerja campuran.

@@ -12,6 +12,7 @@ import streamlit as st
 import db
 import theme
 import ui
+from compute import compute_effective_asphalt, compute_gradation
 
 ui.inject()
 
@@ -345,7 +346,7 @@ def _jmf_results(data, config):
     }
 
 
-def _marshall_results(marshall):
+def _marshall_results(marshall, p200=None):
     specific_gravity = marshall.get("g")
     if not isinstance(specific_gravity, dict):
         specific_gravity = {}
@@ -365,7 +366,11 @@ def _marshall_results(marshall):
             continue
         values = {key: _number(row.get(key)) for key in ("ka", "a", "b", "c", "st", "fl")}
         ka, dry, ssd, immersed = values["ka"], values["a"], values["b"], values["c"]
-        if ka is None or ka < 0 or dry is None or dry <= 0 or ssd is None or immersed is None or ssd <= immersed:
+        if (
+            ka is None or not 0 <= ka < 100
+            or dry is None or dry <= 0
+            or ssd is None or immersed is None or ssd <= immersed
+        ):
             continue
         gmb = dry / (ssd - immersed)
         gmm = None
@@ -376,6 +381,9 @@ def _marshall_results(marshall):
         vfa = 100 * (vma - vim) / vma if vma else None
         stability = values["st"] * multiplier if values["st"] is not None else None
         flow = values["fl"]
+        effective_asphalt = compute_effective_asphalt(
+            bulk, effective, asphalt, ka, p200
+        )
         results.append({
             "KA (%)": ka,
             "Berat kering (g)": dry,
@@ -389,11 +397,15 @@ def _marshall_results(marshall):
             "Stabilitas (kg)": stability,
             "Flow (mm)": flow,
             "MQ (kg/mm)": stability / flow if stability is not None and flow else None,
+            "Pba (%)": effective_asphalt["pba"] if effective_asphalt else None,
+            "Pbe (%)": effective_asphalt["pbe"] if effective_asphalt else None,
+            "P200 (%)": effective_asphalt["p200"] if effective_asphalt else None,
+            "D/B": effective_asphalt["db_ratio"] if effective_asphalt else None,
         })
     return results
 
 
-def _show_marshall(marshall):
+def _show_marshall(marshall, data):
     st.markdown("#### Pengaturan dan batas Marshall")
     specification_names = {
         "AC-WC": "AC-WC",
@@ -407,6 +419,12 @@ def _show_marshall(marshall):
     gravity = marshall.get("g")
     if not isinstance(gravity, dict):
         gravity = {}
+    bulk = _number(gravity.get("gsb"))
+    effective = _number(gravity.get("gse"))
+    if bulk is not None and effective is not None and effective < bulk:
+        st.warning(
+            "Gse lebih kecil dari Gsb; Pba/Pbe dan rasio D/B tidak dapat dihitung."
+        )
     gravity_labels = {
         "gsb": "BJ bulk agregat (Gsb)",
         "gse": "BJ efektif agregat (Gse)",
@@ -456,15 +474,46 @@ def _show_marshall(marshall):
     else:
         st.info("Belum ada data benda uji Marshall pada berkas ini.")
 
-    results = _marshall_results(marshall)
+    gradation = None
+    gradation_error = None
+    try:
+        gradation = compute_gradation(data)
+    except (KeyError, TypeError, ValueError) as error:
+        gradation_error = error
+    p200 = None
+    if gradation:
+        p200_row = next(
+            (
+                row for row in gradation["rows"]
+                if abs(row["d"] - 0.075) < 0.001
+            ),
+            None,
+        )
+        p200 = p200_row["P"] if p200_row else None
+    results = _marshall_results(marshall, p200)
     if not results:
         st.info("Hasil Marshall belum dapat dihitung. Lengkapi data benda uji dan nilai Gsb, Gse, serta Gb.")
         return
 
     st.markdown("#### Hasil perhitungan Marshall")
     _show_table(pd.DataFrame(results))
+    st.caption(
+        "Pba = 100·(Gse−Gsb)/(Gse·Gsb)·Gb; "
+        "Pbe = Pb−(Pba/100)·Ps; D/B = P200/Pbe. "
+        "Rujukan perancangan: Asphalt Institute MS-2. "
+        "D/B 0,6–1,2 adalah acuan umum, bukan batas otomatis."
+    )
+    if p200 is None:
+        if gradation_error is not None:
+            st.warning(f"Gradasi gabungan tidak dapat dihitung untuk P200: {gradation_error}")
+        else:
+            st.warning(
+                "P200 tidak tersedia dari gradasi gabungan; D/B tidak dapat dihitung. "
+                "Pastikan ayakan 0,075 mm tersedia."
+            )
     average_columns = [
         "Gmb", "VIM (%)", "VMA (%)", "VFA (%)",
+        "Pba (%)", "Pbe (%)", "P200 (%)", "D/B",
         "Stabilitas (kg)", "Flow (mm)", "MQ (kg/mm)",
     ]
     averages = pd.DataFrame(results).groupby("KA (%)", as_index=False)[average_columns].mean().sort_values("KA (%)")
@@ -750,7 +799,7 @@ else:
             marshall = data.get("mz")
             if isinstance(marshall, dict):
                 st.subheader("Data Marshall")
-                _show_marshall(marshall)
+                _show_marshall(marshall, data)
 
             st.download_button(
                 f"Unduh ulang {name}",
