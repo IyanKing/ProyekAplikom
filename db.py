@@ -3,11 +3,17 @@
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import sqlite3
 
 
-DB_PATH = Path(__file__).resolve().parent / "data" / "history.db"
+_data_dir = os.environ.get("GRADASI_DATA_DIR")
+DB_PATH = (
+    Path(_data_dir) / "history.db"
+    if _data_dir
+    else Path(__file__).resolve().parent / "data" / "history.db"
+)
 
 
 @contextmanager

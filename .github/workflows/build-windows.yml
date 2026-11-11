@@ -1,0 +1,47 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build Windows package
+        run: python -m PyInstaller --noconfirm --clean GradasiAgregat.spec
+
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          $exe = "dist/GradasiAgregat/GradasiAgregat.exe"
+          if (!(Test-Path $exe)) {
+            throw "EXE tidak ditemukan: $exe"
+          }
+          Get-ChildItem "dist/GradasiAgregat" | Format-Table Name, Length
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: GradasiAgregat-windows
+          path: dist/GradasiAgregat/
+          if-no-files-found: error
+          retention-days: 30

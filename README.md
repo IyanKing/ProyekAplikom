@@ -39,6 +39,21 @@ Di Windows, aktifkan lingkungan virtual dengan
 `.venv\Scripts\activate` setelah membuatnya. Buka alamat lokal yang dicetak
 oleh Streamlit. Navigasi aplikasi memerlukan Streamlit 1.46 atau lebih baru.
 
+### Membuat aplikasi desktop Windows
+
+Jalankan `build_windows.bat` pada Windows dengan Python 3.11 dan koneksi
+internet. Hasil build tersedia di `dist/GradasiAgregat/`. Bagikan seluruh
+folder tersebut, bukan hanya EXE-nya. Saat dibuka, aplikasi menjalankan
+Streamlit secara lokal dan membuka browser; hosting publik tidak diperlukan.
+Riwayat desain disimpan di `%LOCALAPPDATA%/GradasiAgregat/history.db`.
+Paket ini belum berupa installer dan perlu diuji pada komputer Windows lain
+sebelum dibagikan.
+
+Build yang sama dapat dijalankan melalui GitHub Actions: push perubahan ke
+GitHub, buka **Actions** → **Build Windows EXE** → **Run workflow**, lalu
+unduh artifact `GradasiAgregat-windows` dari halaman run yang selesai. Workflow
+juga berjalan otomatis ketika tag versi berawalan `v` dipush, misalnya `v1.0`.
+
 `gradasi.html` adalah template kalkulator. `kalkulator.py` menyisipkan
 `styles.css`, `app.js`, dan data dari `specs.json` ke dalam template sebelum
 mengirimkannya ke iframe Streamlit; berkas-berkas tersebut harus tetap berada
